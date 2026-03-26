@@ -1801,7 +1801,8 @@ export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof 
 
 export const SubjectScalarFieldEnum = {
   id: 'id',
-  name: 'name'
+  name: 'name',
+  categories: 'categories'
 } as const
 
 export type SubjectScalarFieldEnum = (typeof SubjectScalarFieldEnum)[keyof typeof SubjectScalarFieldEnum]
@@ -2000,6 +2001,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'SubjectCategory'
+ */
+export type EnumSubjectCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SubjectCategory'>
+    
+
+
+/**
+ * Reference to a field of type 'SubjectCategory[]'
+ */
+export type ListEnumSubjectCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SubjectCategory[]'>
     
 
 

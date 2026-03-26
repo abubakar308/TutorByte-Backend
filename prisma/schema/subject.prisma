@@ -1,6 +1,7 @@
 model Subject {
   id     String          @id @default(uuid())
   name   String
+  categories  SubjectCategory
 
   tutors TutorSubjects[]
 }

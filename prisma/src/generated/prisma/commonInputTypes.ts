@@ -287,6 +287,23 @@ export type IntWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedIntFilter<$PrismaModel>
 }
 
+export type EnumSubjectCategoryFilter<$PrismaModel = never> = {
+  equals?: $Enums.SubjectCategory | Prisma.EnumSubjectCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.SubjectCategory[] | Prisma.ListEnumSubjectCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SubjectCategory[] | Prisma.ListEnumSubjectCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSubjectCategoryFilter<$PrismaModel> | $Enums.SubjectCategory
+}
+
+export type EnumSubjectCategoryWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.SubjectCategory | Prisma.EnumSubjectCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.SubjectCategory[] | Prisma.ListEnumSubjectCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SubjectCategory[] | Prisma.ListEnumSubjectCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSubjectCategoryWithAggregatesFilter<$PrismaModel> | $Enums.SubjectCategory
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumSubjectCategoryFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumSubjectCategoryFilter<$PrismaModel>
+}
+
 export type FloatFilter<$PrismaModel = never> = {
   equals?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   in?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel>
@@ -598,6 +615,23 @@ export type NestedFloatFilter<$PrismaModel = never> = {
   gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   not?: Prisma.NestedFloatFilter<$PrismaModel> | number
+}
+
+export type NestedEnumSubjectCategoryFilter<$PrismaModel = never> = {
+  equals?: $Enums.SubjectCategory | Prisma.EnumSubjectCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.SubjectCategory[] | Prisma.ListEnumSubjectCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SubjectCategory[] | Prisma.ListEnumSubjectCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSubjectCategoryFilter<$PrismaModel> | $Enums.SubjectCategory
+}
+
+export type NestedEnumSubjectCategoryWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.SubjectCategory | Prisma.EnumSubjectCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.SubjectCategory[] | Prisma.ListEnumSubjectCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SubjectCategory[] | Prisma.ListEnumSubjectCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSubjectCategoryWithAggregatesFilter<$PrismaModel> | $Enums.SubjectCategory
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumSubjectCategoryFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumSubjectCategoryFilter<$PrismaModel>
 }
 
 export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {

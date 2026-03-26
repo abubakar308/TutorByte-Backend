@@ -9,6 +9,12 @@ enum UserStatus {
   BLOCKED
 }
 
+enum SubjectCategory {
+  ACADEMIC
+  SKILLS
+  LANGUAGE
+}
+
 enum DayOfWeek {
   SUN
   MON

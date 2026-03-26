@@ -244,7 +244,8 @@ export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof 
 
 export const SubjectScalarFieldEnum = {
   id: 'id',
-  name: 'name'
+  name: 'name',
+  categories: 'categories'
 } as const
 
 export type SubjectScalarFieldEnum = (typeof SubjectScalarFieldEnum)[keyof typeof SubjectScalarFieldEnum]

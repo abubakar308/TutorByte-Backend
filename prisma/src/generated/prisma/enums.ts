@@ -26,6 +26,15 @@ export const UserStatus = {
 export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus]
 
 
+export const SubjectCategory = {
+  ACADEMIC: 'ACADEMIC',
+  SKILLS: 'SKILLS',
+  LANGUAGE: 'LANGUAGE'
+} as const
+
+export type SubjectCategory = (typeof SubjectCategory)[keyof typeof SubjectCategory]
+
+
 export const DayOfWeek = {
   SUN: 'SUN',
   MON: 'MON',

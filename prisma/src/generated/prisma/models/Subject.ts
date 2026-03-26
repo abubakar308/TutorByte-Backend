@@ -27,16 +27,19 @@ export type AggregateSubject = {
 export type SubjectMinAggregateOutputType = {
   id: string | null
   name: string | null
+  categories: $Enums.SubjectCategory | null
 }
 
 export type SubjectMaxAggregateOutputType = {
   id: string | null
   name: string | null
+  categories: $Enums.SubjectCategory | null
 }
 
 export type SubjectCountAggregateOutputType = {
   id: number
   name: number
+  categories: number
   _all: number
 }
 
@@ -44,16 +47,19 @@ export type SubjectCountAggregateOutputType = {
 export type SubjectMinAggregateInputType = {
   id?: true
   name?: true
+  categories?: true
 }
 
 export type SubjectMaxAggregateInputType = {
   id?: true
   name?: true
+  categories?: true
 }
 
 export type SubjectCountAggregateInputType = {
   id?: true
   name?: true
+  categories?: true
   _all?: true
 }
 
@@ -132,6 +138,7 @@ export type SubjectGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
 export type SubjectGroupByOutputType = {
   id: string
   name: string
+  categories: $Enums.SubjectCategory
   _count: SubjectCountAggregateOutputType | null
   _min: SubjectMinAggregateOutputType | null
   _max: SubjectMaxAggregateOutputType | null
@@ -158,12 +165,14 @@ export type SubjectWhereInput = {
   NOT?: Prisma.SubjectWhereInput | Prisma.SubjectWhereInput[]
   id?: Prisma.StringFilter<"Subject"> | string
   name?: Prisma.StringFilter<"Subject"> | string
+  categories?: Prisma.EnumSubjectCategoryFilter<"Subject"> | $Enums.SubjectCategory
   tutors?: Prisma.TutorSubjectsListRelationFilter
 }
 
 export type SubjectOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  categories?: Prisma.SortOrder
   tutors?: Prisma.TutorSubjectsOrderByRelationAggregateInput
 }
 
@@ -173,12 +182,14 @@ export type SubjectWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.SubjectWhereInput[]
   NOT?: Prisma.SubjectWhereInput | Prisma.SubjectWhereInput[]
   name?: Prisma.StringFilter<"Subject"> | string
+  categories?: Prisma.EnumSubjectCategoryFilter<"Subject"> | $Enums.SubjectCategory
   tutors?: Prisma.TutorSubjectsListRelationFilter
 }, "id">
 
 export type SubjectOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  categories?: Prisma.SortOrder
   _count?: Prisma.SubjectCountOrderByAggregateInput
   _max?: Prisma.SubjectMaxOrderByAggregateInput
   _min?: Prisma.SubjectMinOrderByAggregateInput
@@ -190,65 +201,80 @@ export type SubjectScalarWhereWithAggregatesInput = {
   NOT?: Prisma.SubjectScalarWhereWithAggregatesInput | Prisma.SubjectScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Subject"> | string
   name?: Prisma.StringWithAggregatesFilter<"Subject"> | string
+  categories?: Prisma.EnumSubjectCategoryWithAggregatesFilter<"Subject"> | $Enums.SubjectCategory
 }
 
 export type SubjectCreateInput = {
   id?: string
   name: string
+  categories: $Enums.SubjectCategory
   tutors?: Prisma.TutorSubjectsCreateNestedManyWithoutSubjectInput
 }
 
 export type SubjectUncheckedCreateInput = {
   id?: string
   name: string
+  categories: $Enums.SubjectCategory
   tutors?: Prisma.TutorSubjectsUncheckedCreateNestedManyWithoutSubjectInput
 }
 
 export type SubjectUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  categories?: Prisma.EnumSubjectCategoryFieldUpdateOperationsInput | $Enums.SubjectCategory
   tutors?: Prisma.TutorSubjectsUpdateManyWithoutSubjectNestedInput
 }
 
 export type SubjectUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  categories?: Prisma.EnumSubjectCategoryFieldUpdateOperationsInput | $Enums.SubjectCategory
   tutors?: Prisma.TutorSubjectsUncheckedUpdateManyWithoutSubjectNestedInput
 }
 
 export type SubjectCreateManyInput = {
   id?: string
   name: string
+  categories: $Enums.SubjectCategory
 }
 
 export type SubjectUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  categories?: Prisma.EnumSubjectCategoryFieldUpdateOperationsInput | $Enums.SubjectCategory
 }
 
 export type SubjectUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  categories?: Prisma.EnumSubjectCategoryFieldUpdateOperationsInput | $Enums.SubjectCategory
 }
 
 export type SubjectCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  categories?: Prisma.SortOrder
 }
 
 export type SubjectMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  categories?: Prisma.SortOrder
 }
 
 export type SubjectMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  categories?: Prisma.SortOrder
 }
 
 export type SubjectScalarRelationFilter = {
   is?: Prisma.SubjectWhereInput
   isNot?: Prisma.SubjectWhereInput
+}
+
+export type EnumSubjectCategoryFieldUpdateOperationsInput = {
+  set?: $Enums.SubjectCategory
 }
 
 export type SubjectCreateNestedOneWithoutTutorsInput = {
@@ -268,11 +294,13 @@ export type SubjectUpdateOneRequiredWithoutTutorsNestedInput = {
 export type SubjectCreateWithoutTutorsInput = {
   id?: string
   name: string
+  categories: $Enums.SubjectCategory
 }
 
 export type SubjectUncheckedCreateWithoutTutorsInput = {
   id?: string
   name: string
+  categories: $Enums.SubjectCategory
 }
 
 export type SubjectCreateOrConnectWithoutTutorsInput = {
@@ -294,11 +322,13 @@ export type SubjectUpdateToOneWithWhereWithoutTutorsInput = {
 export type SubjectUpdateWithoutTutorsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  categories?: Prisma.EnumSubjectCategoryFieldUpdateOperationsInput | $Enums.SubjectCategory
 }
 
 export type SubjectUncheckedUpdateWithoutTutorsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  categories?: Prisma.EnumSubjectCategoryFieldUpdateOperationsInput | $Enums.SubjectCategory
 }
 
 
@@ -335,6 +365,7 @@ export type SubjectCountOutputTypeCountTutorsArgs<ExtArgs extends runtime.Types.
 export type SubjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
+  categories?: boolean
   tutors?: boolean | Prisma.Subject$tutorsArgs<ExtArgs>
   _count?: boolean | Prisma.SubjectCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["subject"]>
@@ -342,19 +373,22 @@ export type SubjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
 export type SubjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
+  categories?: boolean
 }, ExtArgs["result"]["subject"]>
 
 export type SubjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
+  categories?: boolean
 }, ExtArgs["result"]["subject"]>
 
 export type SubjectSelectScalar = {
   id?: boolean
   name?: boolean
+  categories?: boolean
 }
 
-export type SubjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name", ExtArgs["result"]["subject"]>
+export type SubjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "categories", ExtArgs["result"]["subject"]>
 export type SubjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tutors?: boolean | Prisma.Subject$tutorsArgs<ExtArgs>
   _count?: boolean | Prisma.SubjectCountOutputTypeDefaultArgs<ExtArgs>
@@ -370,6 +404,7 @@ export type $SubjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
+    categories: $Enums.SubjectCategory
   }, ExtArgs["result"]["subject"]>
   composites: {}
 }
@@ -796,6 +831,7 @@ export interface Prisma__SubjectClient<T, Null = never, ExtArgs extends runtime.
 export interface SubjectFieldRefs {
   readonly id: Prisma.FieldRef<"Subject", 'String'>
   readonly name: Prisma.FieldRef<"Subject", 'String'>
+  readonly categories: Prisma.FieldRef<"Subject", 'SubjectCategory'>
 }
     
 
