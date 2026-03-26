@@ -1,14 +1,7 @@
-import { Request, Response } from "express"
+import app from './app';
 
-
-const express = require('express')
-const app = express()
-const port = 5000
-
-app.get('/', (req: Request, res: Response) => {
-  res.send('Hello World!')
-})
+const port = process.env.PORT || 5000;
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+  console.log(`TutorByte is running on port ${port}`);
+});
