@@ -15,10 +15,4 @@ model Booking {
   payment     Payment?
 }
 
-enum BookingStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-  COMPLETED
-  CANCELLED
-}
+

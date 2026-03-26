@@ -1,21 +1,33 @@
 
 model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
+  id            String         @id @default(uuid())
+  name          String         @db.VarChar(255)
+  email         String         @unique
+  emailVerified Boolean        @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          UserRole
+  profileImage  String
+  isVerified    Boolean
+  status        UserStatus
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
   sessions      Session[]
   accounts      Account[]
 
-  @@unique([email])
+  tutorProfile  TutorProfile?
+  reviews       Review[]       @relation("studentReviews")
+  bookings      Booking[]      @relation("studentBookings")
+  sentMessages  Message[]      @relation("sentMessages")
+  receivedMessages Message[]   @relation("receivedMessages")
+  notifications Notification[]
+  adminLogs     AdminLog[]     @relation("adminLogs")
+  
   @@map("user")
 }
 
 model Session {
-  id        String   @id
+  id        String   @id @default(uuid())
   expiresAt DateTime
   token     String
   createdAt DateTime @default(now())

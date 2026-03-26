@@ -1,0 +1,6 @@
+model Language {
+  id     String          @id @default(uuid())
+  name   String
+
+  tutors TutorLanguages[]
+}

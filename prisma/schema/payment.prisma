@@ -1,6 +1,6 @@
 model Payment {
   id            String      @id @default(uuid())
-  bookingId     String
+  bookingId     String      @unique
   amount        Decimal     @db.Decimal(8, 2)
   status        PaymentStatus
   transactionId String
@@ -10,9 +10,4 @@ model Payment {
   booking       Booking     @relation(fields: [bookingId], references: [id])
 }
 
-enum PaymentStatus {
-  PENDING
-  PAID
-  FAILED
-  REFUNDED
-}
+

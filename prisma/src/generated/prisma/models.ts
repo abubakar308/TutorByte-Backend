@@ -8,8 +8,20 @@
  *
  * 🟢 You can import this file directly.
  */
+export type * from './models/AdminLog'
 export type * from './models/User'
 export type * from './models/Session'
 export type * from './models/Account'
 export type * from './models/Verification'
+export type * from './models/Availability'
+export type * from './models/Booking'
+export type * from './models/Language'
+export type * from './models/Message'
+export type * from './models/Notification'
+export type * from './models/Payment'
+export type * from './models/Review'
+export type * from './models/Subject'
+export type * from './models/TutorLanguages'
+export type * from './models/TutorProfile'
+export type * from './models/TutorSubjects'
 export type * from './commonInputTypes'

@@ -9,12 +9,4 @@ model Availability {
   tutor     TutorProfile @relation(fields: [tutorId], references: [id])
 }
 
-enum DayOfWeek {
-  SUN
-  MON
-  TUE
-  WED
-  THU
-  FRI
-  SAT
-}
+

@@ -1,0 +1,8 @@
+model AdminLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  createdAt DateTime @default(now())
+
+  admin     User     @relation("adminLogs", fields: [adminId], references: [id])
+}
