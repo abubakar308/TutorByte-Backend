@@ -1,0 +1,37 @@
+model User {
+  id            String         @id @default(uuid())
+  name          String         @db.VarChar(255)
+  email         String         @unique
+  emailVerified Boolean        @default(false)
+  image         String?
+  role          UserRole
+  profileImage  String
+  isVerified    Boolean
+  status        UserStatus
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+
+  tutorProfile  TutorProfile?
+  reviews       Review[]       @relation("studentReviews")
+  bookings      Booking[]      @relation("studentBookings")
+  sentMessages  Message[]      @relation("sentMessages")
+  receivedMessages Message[]   @relation("receivedMessages")
+  notifications Notification[]
+  adminLogs     AdminLog[]     @relation("adminLogs")
+  
+  @@map("user")
+}
+
+enum UserRole {
+  STUDENT
+  TUTOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+}

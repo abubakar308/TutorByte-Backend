@@ -1,0 +1,18 @@
+model TutorProfile {
+  id             String          @id @default(uuid())
+  userId         String          @unique
+  bio            String
+  experienceYears Int
+  hourlyRate     Decimal         @db.Decimal(8, 2)
+  averageRating  Float
+  totalReviews   Int
+  isApproved     Boolean
+  createdAt      DateTime        @default(now())
+
+  user           User            @relation(fields: [userId], references: [id])
+  subjects       TutorSubjects[]
+  languages      TutorLanguages[]
+  availabilities Availability[]
+  reviews        Review[]
+  bookings       Booking[]
+}

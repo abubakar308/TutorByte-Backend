@@ -6,7 +6,7 @@ const app: Application = express();
 
 app.use(express.json());
 
-app.all("/api/auth/*", toNodeHandler(auth));
+app.all("/api/auth", toNodeHandler(auth));
 
 app.get('/', (req: Request, res: Response) => {
   res.send('TutorByte');

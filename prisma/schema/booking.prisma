@@ -1,0 +1,24 @@
+model Booking {
+  id          String       @id @default(uuid())
+  studentId   String
+  tutorId     String
+  bookingDate DateTime
+  startTime   String
+  endTime     String
+  status      BookingStatus
+  totalPrice  Decimal      @db.Decimal(8, 2)
+  meetingLink String
+  createdAt   DateTime     @default(now())
+
+  student     User         @relation("studentBookings", fields: [studentId], references: [id])
+  tutor       TutorProfile @relation(fields: [tutorId], references: [id])
+  payment     Payment?
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}

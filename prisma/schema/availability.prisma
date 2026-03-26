@@ -1,0 +1,20 @@
+model Availability {
+  id        String       @id @default(uuid())
+  tutorId   String
+  dayOfWeek DayOfWeek
+  startTime String      
+  endTime   String
+  isActive  Boolean
+
+  tutor     TutorProfile @relation(fields: [tutorId], references: [id])
+}
+
+enum DayOfWeek {
+  SUN
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+}
