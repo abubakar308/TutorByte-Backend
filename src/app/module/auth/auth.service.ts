@@ -1,15 +1,15 @@
+import status from "http-status";
+import AppError from "../../errorHelper/AppError";
 import { auth } from "../../lib/auth";
-import { prisma } from "../../lib/prisma";
+import { ILoginUserPayload } from "./auth.interface";
+import { UserStatus } from "../../../generated/prisma/enums";
 
-
-
-interface IRegisterPatientPayload {
+interface IRegisterStudentPayload {
     name: string;
     email: string;
     password: string;
 }
-
-const registerPatient = async (payload: IRegisterPatientPayload) => {
+const registerStudent = async (payload: IRegisterStudentPayload) => {
     const { name, email, password } = payload;
 
     const data = await auth.api.signUpEmail({
@@ -21,60 +21,70 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
     })
 
     if (!data.user) {
-        // throw new Error("Failed to register patient");
-        throw new AppError(status.BAD_REQUEST, "Failed to register patient");
+        throw new AppError(status.BAD_REQUEST, "Failed to register student");
     }
 
-    //TODO : Create Patient Profile In Transaction After Sign Up Of Patient In USer Model
-    try {
-        const patient = await prisma.$transaction(async (tx) => {
+    // Since a Student is just a User with a STUDENT role, and there is no separate StudentProfile
+    // model in the schema, we don't need a transaction to create a profile.
+    return {
+        ...data,
+        student: data.user
+    }
+}
 
-            const patientTx = await tx.tutorProfile.create({
-                data: {
-                    userId: data.user.id,
-                    name: payload.name,
-                    email: payload.email,
-                }
-            })
 
-            return patientTx
-        })
+const loginStudent = async (payload: ILoginUserPayload) => {
+    const { email, password } = payload;
 
-        // const accessToken = tokenUtils.getAccessToken({
-        //     userId: data.user.id,
-        //     role: data.user.role,
-        //     name: data.user.name,
-        //     email: data.user.email,
-        //     status: data.user.status,
-        //     isDeleted: data.user.isDeleted,
-        //     emailVerified: data.user.emailVerified,
-        // });
-
-        // const refreshToken = tokenUtils.getRefreshToken({
-        //     userId: data.user.id,
-        //     role: data.user.role,
-        //     name: data.user.name,
-        //     email: data.user.email,
-        //     status: data.user.status,
-        //     isDeleted: data.user.isDeleted,
-        //     emailVerified: data.user.emailVerified,
-        // });
-
-        return {
-            ...data,
-            // accessToken,
-            // refreshToken,
-            patient
+    const data = await auth.api.signInEmail({
+        body: {
+            email,
+            password
         }
+    })
 
-    } catch (error) {
-        console.log("Transaction error : ", error);
-        await prisma.user.delete({
-            where: {
-                id: data.user.id
-            }
-        })
-        throw error;
+
+//  if (data.user.status === UserStatus.BLOCKED) {
+//         throw new AppError(status.FORBIDDEN, "User is blocked");
+//     }
+
+    //    if (data.user.isDeleted || data.user.status === UserStatus.DELETED) {
+    //     throw new AppError(status.NOT_FOUND, "User is deleted");
+    // }
+
+    if (!data.user) {
+        throw new Error("Failed to login patient");
     }
 
+    //  const accessToken = tokenUtils.getAccessToken({
+    //     userId: data.user.id,
+    //     role: data.user.role,
+    //     name: data.user.name,
+    //     email: data.user.email,
+    //     status: data.user.status,
+    //     isDeleted: data.user.isDeleted,
+    //     emailVerified: data.user.emailVerified,
+    // });
+
+    // const refreshToken = tokenUtils.getRefreshToken({
+    //     userId: data.user.id,
+    //     role: data.user.role,
+    //     name: data.user.name,
+    //     email: data.user.email,
+    //     status: data.user.status,
+    //     isDeleted: data.user.isDeleted,
+    //     emailVerified: data.user.emailVerified,
+    // });
+    
+    return {
+        ...data,
+        // accessToken,
+        // refreshToken
+    }
+
+};
+
+export const AuthServices = {
+    registerStudent,
+    loginStudent
 }
