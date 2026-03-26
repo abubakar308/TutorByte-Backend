@@ -13,3 +13,9 @@ export interface IChangePasswordPayload {
     currentPassword: string;
     newPassword: string;
 }
+
+export interface IRequestUser {
+    userId: string;
+    email: string;
+    role: string;
+}

@@ -1,8 +1,9 @@
 import status from "http-status";
 import AppError from "../../errorHelper/AppError";
 import { auth } from "../../lib/auth";
-import { ILoginUserPayload } from "./auth.interface";
+import { ILoginUserPayload, IRequestUser } from "./auth.interface";
 import { UserStatus } from "../../../generated/prisma/enums";
+import { prisma } from "../../lib/prisma";
 
 interface IRegisterStudentPayload {
     name: string;
@@ -84,7 +85,39 @@ const loginStudent = async (payload: ILoginUserPayload) => {
 
 };
 
+const getMe = async (user: IRequestUser) => {
+  const userData = await prisma.user.findUnique({
+    where: {
+      id: user.userId,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+
+      tutorProfile: {
+        select: {
+          id: true,
+          bio: true,
+          hourlyRate: true,
+          isApproved: true,
+        },
+      },
+    },
+  });
+
+  if (!userData) {
+    throw new AppError(status.NOT_FOUND, "User does not exist");
+  }
+
+  return userData;
+};
+
+
 export const AuthServices = {
     registerStudent,
-    loginStudent
+    loginStudent,
+    getMe
 }

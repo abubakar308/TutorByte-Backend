@@ -3,6 +3,7 @@ import { catchAsync } from "../../shared/catchAsync";
 import { Request, Response } from "express";
 import { sendResponse } from "../../shared/sendResponse";
 import { AuthServices } from "./auth.service";
+import { IRequestUser } from "./auth.interface";
 
 
 
@@ -65,8 +66,25 @@ const loginStudent = catchAsync(
 )
 
 
+const getMe = catchAsync(
+    async (req: Request, res: Response) => {
+        const user = req.user;
+
+        const result = await AuthServices.getMe(user as IRequestUser);
+
+        sendResponse(res, {
+            httpStatusCode: status.OK,
+            success: true,
+            message: "User fetched successfully",
+            data: result
+        })
+    }
+)
+
+
 export const AuthController = {
     registerStudent,
-    loginStudent
+    loginStudent,
+    getMe
 
 }
