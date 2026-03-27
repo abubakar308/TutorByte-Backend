@@ -2,14 +2,16 @@ import status from "http-status";
 import AppError from "../../errorHelper/AppError";
 import { auth } from "../../lib/auth";
 import { ILoginUserPayload, IRequestUser } from "./auth.interface";
-import { UserStatus } from "../../../generated/prisma/enums";
 import { prisma } from "../../lib/prisma";
+import { tokenUtils } from "../../utils/token";
 
 interface IRegisterStudentPayload {
     name: string;
     email: string;
     password: string;
 }
+
+
 const registerStudent = async (payload: IRegisterStudentPayload) => {
     const { name, email, password } = payload;
 
@@ -57,46 +59,77 @@ const loginStudent = async (payload: ILoginUserPayload) => {
         throw new Error("Failed to login patient");
     }
 
-    //  const accessToken = tokenUtils.getAccessToken({
-    //     userId: data.user.id,
-    //     role: data.user.role,
-    //     name: data.user.name,
-    //     email: data.user.email,
-    //     status: data.user.status,
-    //     isDeleted: data.user.isDeleted,
-    //     emailVerified: data.user.emailVerified,
-    // });
+     const accessToken = tokenUtils.getAccessToken({
+        userId: data.user.id,
+        role: data.user.role,
+        name: data.user.name,
+        email: data.user.email,
+        status: data.user.status,
+        isDeleted: data.user.isDeleted,
+        emailVerified: data.user.emailVerified,
+    });
 
-    // const refreshToken = tokenUtils.getRefreshToken({
-    //     userId: data.user.id,
-    //     role: data.user.role,
-    //     name: data.user.name,
-    //     email: data.user.email,
-    //     status: data.user.status,
-    //     isDeleted: data.user.isDeleted,
-    //     emailVerified: data.user.emailVerified,
-    // });
+    const refreshToken = tokenUtils.getRefreshToken({
+        userId: data.user.id,
+        role: data.user.role,
+        name: data.user.name,
+        email: data.user.email,
+        status: data.user.status,
+        isDeleted: data.user.isDeleted,
+        emailVerified: data.user.emailVerified,
+    });
     
     return {
         ...data,
-        // accessToken,
-        // refreshToken
+        accessToken,
+        refreshToken
     }
 
 };
 
+// const getMe = async (user: IRequestUser) => {
+//   const userData = await prisma.user.findUnique({
+//     where: {
+//       id: user.userId,
+//     },
+//     select: {
+//       id: true,
+//       name: true,
+//       email: true,
+//       role: true,
+//       createdAt: true,
+
+//       tutorProfile: {
+//         select: {
+//           id: true,
+//           bio: true,
+//           hourlyRate: true,
+//           isApproved: true,
+//         },
+//       },
+//     },
+//   });
+
+//   if (!userData) {
+//     throw new AppError(status.NOT_FOUND, "User does not exist");
+//   }
+
+//   return userData;
+// };
+
+
 const getMe = async (user: IRequestUser) => {
   const userData = await prisma.user.findUnique({
-    where: {
-      id: user.userId,
-    },
+    where: { id: user.userId },
     select: {
       id: true,
       name: true,
       email: true,
       role: true,
+      image: true,
+      isVerified: true,
+      status: true,
       createdAt: true,
-
       tutorProfile: {
         select: {
           id: true,
@@ -107,14 +140,13 @@ const getMe = async (user: IRequestUser) => {
       },
     },
   });
-
+ 
   if (!userData) {
-    throw new AppError(status.NOT_FOUND, "User does not exist");
+    throw new AppError(status.NOT_FOUND, "User does not exist.");
   }
-
+ 
   return userData;
 };
-
 
 export const AuthServices = {
     registerStudent,

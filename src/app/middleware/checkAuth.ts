@@ -3,13 +3,17 @@ import { NextFunction, Request, Response } from "express";
 import status from "http-status";
 import { UserRole, UserStatus } from "../../generated/prisma/enums";
 import { prisma } from "../lib/prisma";
-
 import AppError from "../errorHelper/AppError";
+import { CookieUtils } from "../utils/cookie";
+import { jwtUtils } from "../utils/jwt";
+import { envVars } from "../config/env";
 
 export const checkAuth = (...authRoles: UserRole[]) => async (req: Request, res: Response, next: NextFunction) => {
     try {
         //Session Token Verification
         const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token");
+
+        console.log(req.cookies);
 
         if (!sessionToken) {
             throw new Error('Unauthorized access! No session token provided.');
@@ -85,7 +89,7 @@ export const checkAuth = (...authRoles: UserRole[]) => async (req: Request, res:
             throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! Invalid access token.');
         }
 
-        if (authRoles.length > 0 && !authRoles.includes(verifiedToken.data!.role as Role)) {
+        if (authRoles.length > 0 && !authRoles.includes(verifiedToken.data!.role as UserRole)) {
             throw new AppError(status.FORBIDDEN, 'Forbidden access! You do not have permission to access this resource.');
         }
 
