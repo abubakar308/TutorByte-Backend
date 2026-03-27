@@ -9,9 +9,9 @@ const app: Application = express();
 app.use(express.json());
 app.use(cookieParser());
 
-app.all("/api/auth", toNodeHandler(auth));
+app.use("/api/v1", IndexRoutes);
 
-app.use("/api/v1", IndexRoutes)
+app.all("/api/auth", toNodeHandler(auth));
 
 app.get('/', (req: Request, res: Response) => {
   res.send('TutorByte');

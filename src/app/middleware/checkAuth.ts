@@ -13,7 +13,6 @@ export const checkAuth = (...authRoles: UserRole[]) => async (req: Request, res:
         //Session Token Verification
         const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token");
 
-        console.log(req.cookies);
 
         if (!sessionToken) {
             throw new Error('Unauthorized access! No session token provided.');
