@@ -15,12 +15,12 @@ const createProfileSchema = z.object({
       .max(10000, "Hourly rate seems too high."),
 
     subjects: z
-      .array(z.string().min(1))
+      .array(z.string().uuid("Invalid subject ID."))
       .min(1, "At least one subject is required.")
       .max(10, "Maximum 10 subjects allowed."),
 
     languages: z
-      .array(z.string().min(1))
+      .array(z.string().uuid("Invalid language ID."))
       .min(1, "At least one language is required.")
       .max(10, "Maximum 10 languages allowed."),
 
@@ -37,8 +37,8 @@ const updateProfileSchema = z.object({
   body: z.object({
     bio: z.string().min(50).max(1000).optional(),
     hourlyRate: z.number().positive().max(10000).optional(),
-    subjects: z.array(z.string().min(1)).min(1).max(10).optional(),
-    languages: z.array(z.string().min(1)).min(1).max(10).optional(),
+    subjects: z.array(z.string().uuid()).min(1).max(10).optional(),
+    languages: z.array(z.string().uuid()).min(1).max(10).optional(),
     experienceYrs: z.number().int().min(0).max(50).optional(),
   }),
 });

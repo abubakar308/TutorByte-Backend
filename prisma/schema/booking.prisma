@@ -7,8 +7,8 @@ model Booking {
   endTime     String
   status      BookingStatus
   totalPrice  Decimal      @db.Decimal(8, 2)
-  meetingLink String
-  createdAt   DateTime     @default(now())
+  meetingLink String?
+  createdAt  DateTime     @default(now())
 
   student     User         @relation("studentBookings", fields: [studentId], references: [id])
   tutor       TutorProfile @relation(fields: [tutorId], references: [id])

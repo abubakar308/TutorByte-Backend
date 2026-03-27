@@ -36,8 +36,8 @@ router.get("/:tutorId/profile", TutorController.getPublicProfile);
  */
 router.post(
   "/profile",
-  checkAuth(UserRole.STUDENT),
-  validateRequest(TutorValidation.createProfileSchema),
+  checkAuth(UserRole.STUDENT, UserRole.TUTOR),
+  // validateRequest(TutorValidation.createProfileSchema),
   TutorController.createTutorProfile
 );
 

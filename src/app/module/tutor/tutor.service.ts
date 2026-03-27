@@ -10,17 +10,27 @@ import { IRequestUser } from "../auth/auth.interface";
 import AppError from "../../errorHelper/AppError";
 import { prisma } from "../../lib/prisma";
 import { deleteFromCloudinary, getPublicIdFromUrl, uploadToCloudinary } from "../../config/cloudinary.config";
-import { Prisma } from "../../../generated/prisma/client";
+import { DayOfWeek, Prisma } from "../../../generated/prisma/client";
+
+const DAYS_ENUM = [
+  DayOfWeek.SUN,
+  DayOfWeek.MON,
+  DayOfWeek.TUE,
+  DayOfWeek.WED,
+  DayOfWeek.THU,
+  DayOfWeek.FRI,
+  DayOfWeek.SAT,
+] as const;
 
 const createTutorProfile = async (
   user: IRequestUser,
   payload: ICreateTutorProfile
 ) => {
-  // Only TUTOR role can create a profile
-  if (user.role !== "STUDENT") {
+  // Check if role is allowed
+  if (user.role !== "STUDENT" && user.role !== "TUTOR") {
     throw new AppError(
       status.FORBIDDEN,
-      "Only tutors can create a tutor profile."
+      "Only students or tutors can create a tutor profile."
     );
   }
 
@@ -40,11 +50,11 @@ const createTutorProfile = async (
     throw new AppError(status.BAD_REQUEST, "Hourly rate must be greater than 0.");
   }
 
-  if (!payload.subjects.length) {
+  if (!payload.subjects || !payload.subjects.length) {
     throw new AppError(status.BAD_REQUEST, "At least one subject is required.");
   }
 
-  if (!payload.languages.length) {
+  if (!payload.languages || !payload.languages.length) {
     throw new AppError(status.BAD_REQUEST, "At least one language is required.");
   }
 
@@ -68,6 +78,9 @@ const createTutorProfile = async (
       }))
     },
       experienceYears: payload.experienceYrs ?? 0,
+      averageRating: 0,
+      totalReviews: 0,
+      isApproved: false,
     },
     include: {
       user: {
@@ -76,8 +89,13 @@ const createTutorProfile = async (
     },
   });
 
-  // Sync to search index
-  // await syncSearchIndex(profile.id);
+  // If role is STUDENT, update to TUTOR
+  if (user.role === "STUDENT") {
+    await prisma.user.update({
+      where: { id: user.userId },
+      data: { role: "TUTOR" },
+    });
+  }
 
   return profile;
 };
@@ -109,12 +127,30 @@ const updateTutorProfile = async (
     data: {
       ...(payload.bio !== undefined && { bio: payload.bio }),
       ...(payload.hourlyRate !== undefined && { hourlyRate: payload.hourlyRate }),
-      ...(payload.subjects !== undefined && { subjects: payload.subjects }),
-      ...(payload.languages !== undefined && { languages: payload.languages }),
       ...(payload.experienceYrs !== undefined && { experienceYears: payload.experienceYrs }),
       ...(payload.education !== undefined && { education: payload.education }),
       ...(payload.timezone !== undefined && { timezone: payload.timezone }),
       ...(payload.introVideoUrl !== undefined && { introVideoUrl: payload.introVideoUrl }),
+
+      // Relational updates for subjects
+      ...(payload.subjects !== undefined && {
+        subjects: {
+          deleteMany: {},
+          create: payload.subjects.map((id: string) => ({
+            subject: { connect: { id } }
+          }))
+        }
+      }),
+
+      // Relational updates for languages
+      ...(payload.languages !== undefined && {
+        languages: {
+          deleteMany: {},
+          create: payload.languages.map((id: string) => ({
+            language: { connect: { id } }
+          }))
+        }
+      }),
     },
     include: {
       user: {
@@ -195,11 +231,10 @@ const setAvailability = async (
     prisma.availability.createMany({
       data: payload.slots.map((slot) => ({
         tutorId: profile.id,
-        dayOfWeek: slot.dayOfWeek,
+        dayOfWeek: DAYS_ENUM[slot.dayOfWeek],
         startTime: slot.startTime,
         endTime: slot.endTime,
-        isRecurring: slot.isRecurring ?? true,
-        specificDate: slot.specificDate ? new Date(slot.specificDate) : null,
+        isActive: true,
       })),
     }),
   ]);
@@ -228,7 +263,7 @@ const getMyAvailability = async (user: IRequestUser) => {
   const grouped = Array.from({ length: 7 }, (_, i) => ({
     dayOfWeek: i,
     dayName: ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][i],
-    slots: slots.filter((s) => s.dayOfWeek === i),
+    slots: slots.filter((s) => s.dayOfWeek === DAYS_ENUM[i]),
   }));
 
   return grouped;
@@ -349,14 +384,14 @@ const searchTutors = async (query: ITutorSearchQuery) => {
     isApproved: true,
     user: { status: "ACTIVE" },
 
-    // Subject filter — checks if the subjects array contains the value
+    // Subject filter
     ...(subject && {
-      subjects: { has: subject },
+      subjects: { some: { subject: { name: { contains: subject, mode: "insensitive" } } } },
     }),
 
     // Language filter
     ...(language && {
-      languages: { has: language },
+      languages: { some: { language: { name: { contains: language, mode: "insensitive" } } } },
     }),
 
     // Price range
@@ -403,7 +438,6 @@ const searchTutors = async (query: ITutorSearchQuery) => {
       take,
       select: {
         id: true,
-        headline: true,
         bio: true,
         hourlyRate: true,
         subjects: true,
@@ -452,8 +486,6 @@ const getDashboardStats = async (user: IRequestUser) => {
     pendingBookings,
     monthBookings,
     lastMonthBookings,
-    totalEarnings,
-    monthEarnings,
     recentReviews,
     upcomingBookings,
   ] = await prisma.$transaction([
