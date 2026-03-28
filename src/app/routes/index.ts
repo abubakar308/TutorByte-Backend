@@ -5,6 +5,7 @@ import { BookingRoute } from "../module/booking/booking.route";
 import { AdminRoutes } from "../module/admin/admin.route";
 import { SubjectRoutes } from "../module/subject/subject.route";
 import { LanguageRoutes } from "../module/language/language.route";
+import { AvailabilityRoutes } from "../module/availability/availability.route";
 
 
 const router = Router();
@@ -15,5 +16,6 @@ router.use("/bookings", BookingRoute);
 router.use("/admin", AdminRoutes);
 router.use("/subject", SubjectRoutes);
 router.use("/language", LanguageRoutes);
+router.use("/availability", AvailabilityRoutes);
 
 export const IndexRoutes = router;
