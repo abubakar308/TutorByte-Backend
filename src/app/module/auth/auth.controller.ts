@@ -7,22 +7,17 @@ import { IRequestUser } from "./auth.interface";
 import { tokenUtils } from "../../utils/token";
 
 
-
 const registerStudent = catchAsync(
     async (req: Request, res: Response) => {
-        // const maxAge = ms(envVars.ACCESS_TOKEN_EXPIRES_IN as StringValue);
-        // console.log({ maxAge });
         const payload = req.body;
-
-        console.log(payload);
 
         const result = await AuthServices.registerStudent(payload);
 
-        const { token, ...rest } = result
+        const { token, accessToken, refreshToken, ...rest } = result;
 
-        // tokenUtils.setAccessTokenCookie(res, accessToken);
-        // tokenUtils.setRefreshTokenCookie(res, refreshToken);
-        // tokenUtils.setBetterAuthSessionCookie(res, token as string);
+        tokenUtils.setAccessTokenCookie(res, accessToken);
+        tokenUtils.setRefreshTokenCookie(res, refreshToken);
+        tokenUtils.setBetterAuthSessionCookie(res, token as string);
 
         sendResponse(res, {
             httpStatusCode: status.CREATED,
@@ -30,13 +25,12 @@ const registerStudent = catchAsync(
             message: "Student registered successfully",
             data: {
                 token,
-                // accessToken,
-                // refreshToken,
+                accessToken,
+                refreshToken,
                 ...rest,
             }
         })
     }
-
 )
 
 
@@ -66,21 +60,6 @@ const loginStudent = catchAsync(
     }
 )
 
-
-// const getMe = catchAsync(
-//     async (req: Request, res: Response) => {
-//         const user = req.user;
-
-//         const result = await AuthServices.getMe(user as IRequestUser);
-
-//         sendResponse(res, {
-//             httpStatusCode: status.OK,
-//             success: true,
-//             message: "User fetched successfully",
-//             data: result
-//         })
-//     }
-// )
 
 const getMe = catchAsync(async (req: Request, res: Response) => {
     const result = await AuthServices.getMe(req.user as IRequestUser);

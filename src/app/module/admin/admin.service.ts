@@ -165,9 +165,13 @@ const deleteUser = async (userId: string, adminId: string) => {
         throw new AppError(status.NOT_FOUND, "User not found");
     }
 
-    const deletedUser = await tx.user.delete({
+    const deletedUser = await tx.user.update({
       where: {
         id: userId,
+      },
+      data: {
+        isDeleted: true,
+        status: UserStatus.BLOCKED,
       },
     });
 

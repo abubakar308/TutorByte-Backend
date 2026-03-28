@@ -17,5 +17,6 @@ router.use("/admin", AdminRoutes);
 router.use("/subject", SubjectRoutes);
 router.use("/language", LanguageRoutes);
 router.use("/availability", AvailabilityRoutes);
+router.use("/admin", AdminRoutes);
 
 export const IndexRoutes = router;
