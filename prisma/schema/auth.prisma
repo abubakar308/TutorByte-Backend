@@ -1,27 +1,29 @@
-
 model User {
-  id            String         @id @default(uuid())
-  name          String         @db.VarChar(255)
-  email         String         @unique
-  emailVerified Boolean        @default(false)
-  image         String?
-  role          UserRole       @default(STUDENT)
-  isVerified    Boolean        @default(false)
-  status        UserStatus     @default(ACTIVE)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                 String     @id @default(uuid())
+  name               String     @db.VarChar(255)
+  email              String     @unique
+  emailVerified      Boolean    @default(false)
+  image              String?
+  role               UserRole   @default(STUDENT)
+  needPasswordChange Boolean    @default(false)
+  isDeleted          Boolean    @default(false)
+  deletedAt          DateTime?
+  isVerified         Boolean    @default(false)
+  status             UserStatus @default(ACTIVE)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
-  sessions      Session[]
-  accounts      Account[]
+  sessions Session[]
+  accounts Account[]
 
-  tutorProfile  TutorProfile?
-  reviews       Review[]       @relation("studentReviews")
-  bookings      Booking[]      @relation("studentBookings")
-  sentMessages  Message[]      @relation("sentMessages")
-  receivedMessages Message[]   @relation("receivedMessages")
-  notifications Notification[]
-  adminLogs     AdminLog[]     @relation("adminLogs")
-  
+  tutorProfile     TutorProfile?
+  reviews          Review[]       @relation("studentReviews")
+  bookings         Booking[]      @relation("studentBookings")
+  sentMessages     Message[]      @relation("sentMessages")
+  receivedMessages Message[]      @relation("receivedMessages")
+  notifications    Notification[]
+  adminLogs        AdminLog[]     @relation("adminLogs")
+
   @@map("user")
 }
 

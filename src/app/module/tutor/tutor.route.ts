@@ -18,7 +18,7 @@ const router = Router();
 
 router.get(
   "/search",
-  validateRequest(TutorValidation.searchQuerySchema),
+  // validateRequest(TutorValidation.searchQuerySchema),
   TutorController.searchTutors
 );
 
@@ -37,7 +37,7 @@ router.get("/:tutorId/profile", TutorController.getPublicProfile);
 router.post(
   "/profile",
   checkAuth(UserRole.STUDENT, UserRole.TUTOR),
-  // validateRequest(TutorValidation.createProfileSchema),
+  validateRequest(TutorValidation.createProfileSchema),
   TutorController.createTutorProfile
 );
 
@@ -45,6 +45,7 @@ router.post(
  * PATCH /tutors/profile
  * Update tutor profile fields
  */
+
 router.patch(
   "/profile",
   checkAuth(UserRole.TUTOR),

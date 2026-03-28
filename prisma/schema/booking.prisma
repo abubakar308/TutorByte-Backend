@@ -1,18 +1,18 @@
 model Booking {
-  id          String       @id @default(uuid())
+  id          String        @id @default(uuid())
   studentId   String
   tutorId     String
+  subjectId   String
   bookingDate DateTime
   startTime   String
   endTime     String
   status      BookingStatus
-  totalPrice  Decimal      @db.Decimal(8, 2)
+  totalPrice  Decimal       @db.Decimal(8, 2)
   meetingLink String?
-  createdAt  DateTime     @default(now())
+  createdAt   DateTime      @default(now())
 
-  student     User         @relation("studentBookings", fields: [studentId], references: [id])
-  tutor       TutorProfile @relation(fields: [tutorId], references: [id])
-  payment     Payment?
+  student User         @relation("studentBookings", fields: [studentId], references: [id])
+  tutor   TutorProfile @relation(fields: [tutorId], references: [id])
+  subject Subject     @relation(fields: [subjectId], references: [id])
+  payment Payment?
 }
-
-

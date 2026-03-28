@@ -19,7 +19,7 @@ const registerStudent = async (payload: IRegisterStudentPayload) => {
         body: {
             name,
             email,
-            password,
+            password
         }
     })
 
@@ -27,8 +27,6 @@ const registerStudent = async (payload: IRegisterStudentPayload) => {
         throw new AppError(status.BAD_REQUEST, "Failed to register student");
     }
 
-    // Since a Student is just a User with a STUDENT role, and there is no separate StudentProfile
-    // model in the schema, we don't need a transaction to create a profile.
     return {
         ...data,
         student: data.user

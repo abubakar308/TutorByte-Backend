@@ -86,6 +86,8 @@ const createTutorProfile = async (
       user: {
         select: { id: true, name: true, email: true, image: true },
       },
+      subjects: true,
+      languages: true,
     },
   });
 

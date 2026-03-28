@@ -70,8 +70,8 @@ router.put(
  */
 router.post(
   "/slot",
-  checkAuth(UserRole.TUTOR),
-  validateRequest(AvailabilityValidation.addSlotSchema),
+  checkAuth(UserRole.STUDENT),
+  // validateRequest(AvailabilityValidation.addSlotSchema),
   availabilityController.addSlot
 );
 
