@@ -36,7 +36,7 @@ const registerStudent = catchAsync(
             }
         })
     }
-    
+
 )
 
 
@@ -46,7 +46,7 @@ const loginStudent = catchAsync(
 
         const result = await AuthServices.loginStudent(payload);
 
-         const { accessToken, refreshToken, token, ...rest } = result
+        const { accessToken, refreshToken, token, ...rest } = result
 
         tokenUtils.setAccessTokenCookie(res, accessToken);
         tokenUtils.setRefreshTokenCookie(res, refreshToken);
@@ -55,7 +55,7 @@ const loginStudent = catchAsync(
         sendResponse(res, {
             httpStatusCode: 201,
             success: true,
-            message: "Patient login successfully",
+            message: "User login successfully",
             data: {
                 token,
                 accessToken,
@@ -83,14 +83,14 @@ const loginStudent = catchAsync(
 // )
 
 const getMe = catchAsync(async (req: Request, res: Response) => {
-  const result = await AuthServices.getMe(req.user as IRequestUser);
- 
-  sendResponse(res, {
-    httpStatusCode: status.OK,
-    success: true,
-    message: "Profile fetched successfully.",
-    data: result,
-  });
+    const result = await AuthServices.getMe(req.user as IRequestUser);
+
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Profile fetched successfully.",
+        data: result,
+    });
 });
 
 

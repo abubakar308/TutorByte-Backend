@@ -3,7 +3,7 @@ import { UserRole, UserStatus } from "../../../generated/prisma/enums";
 
 const updateUserStatusValidationSchema = z.object({
   body: z.object({
-    status: z.nativeEnum(UserStatus, {
+    status: z.enum(UserStatus, {
       message: "Status is required",
     }),
   }),
@@ -11,7 +11,7 @@ const updateUserStatusValidationSchema = z.object({
 
 const updateUserRoleValidationSchema = z.object({
   body: z.object({
-    role: z.nativeEnum(UserRole, {
+    role: z.enum(UserRole, {
       message: "Role is required",
     }),
   }),

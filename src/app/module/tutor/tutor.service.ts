@@ -209,6 +209,13 @@ const setAvailability = async (
       );
     }
 
+    if (slot.startTime >= slot.endTime) {
+      throw new AppError(
+        status.BAD_REQUEST,
+        `startTime must be before endTime in each slot.`
+      );
+    }
+
     if (!isValidTime(slot.startTime) || !isValidTime(slot.endTime)) {
       throw new AppError(
         status.BAD_REQUEST,
