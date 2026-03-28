@@ -73,29 +73,7 @@ router.get(
   TutorController.getDashboardStats
 );
 
-// ── Availability ───────────────────────────────────────────────
 
-/**
- * PUT /tutors/availability
- * Full-replace availability slots (send all slots at once)
- * Body: { slots: [{ dayOfWeek, startTime, endTime, isRecurring? }] }
- */
-router.put(
-  "/availability",
-  checkAuth(UserRole.TUTOR),
-  validateRequest(TutorValidation.setAvailabilitySchema),
-  TutorController.setAvailability
-);
-
-/**
- * GET /tutors/availability/me
- * Returns slots grouped by day of week
- */
-router.get(
-  "/availability/me",
-  checkAuth(UserRole.TUTOR),
-  TutorController.getMyAvailability
-);
 
 // ── Uploads ────────────────────────────────────────────────────
 

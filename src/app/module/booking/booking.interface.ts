@@ -2,6 +2,7 @@ import { BookingStatus } from "../../../generated/prisma/enums";
 
 export interface IBookingCreate {
   tutorId: string;
+  subjectId: string;
   bookingDate: string;
   startTime: string;
   endTime: string;

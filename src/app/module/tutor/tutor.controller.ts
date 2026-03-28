@@ -118,34 +118,7 @@ const uploadAvatar = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  AVAILABILITY
-// ─────────────────────────────────────────────────────────────
 
-const setAvailability = catchAsync(async (req: Request, res: Response) => {
-  const result = await TutorServices.setAvailability(
-    req.user as IRequestUser,
-    req.body
-  );
-
-  sendResponse(res, {
-    httpStatusCode: status.OK,
-    success: true,
-    message: "Availability updated successfully.",
-    data: result,
-  });
-});
-
-const getMyAvailability = catchAsync(async (req: Request, res: Response) => {
-  const result = await TutorServices.getMyAvailability(req.user as IRequestUser);
-
-  sendResponse(res, {
-    httpStatusCode: status.OK,
-    success: true,
-    message: "Availability fetched successfully.",
-    data: result,
-  });
-});
 
 // ─────────────────────────────────────────────────────────────
 //  DASHBOARD
@@ -173,7 +146,5 @@ export const TutorController = {
   getPublicProfile,
   searchTutors,
   uploadAvatar,
-  setAvailability,
-  getMyAvailability,
   getDashboardStats,
 };

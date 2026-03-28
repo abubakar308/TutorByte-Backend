@@ -1,31 +1,48 @@
 import { z } from "zod";
-import { DayOfWeek } from "../../../generated/prisma/enums";
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-const slotSchema = z.object({
-  dayOfWeek: z.enum(DayOfWeek, {
-    message: "Invalid day. Must be one of: SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY.",
-  }),
-  startTime: z
-    .string({ message: "startTime is required." })
-    .regex(timeRegex, "startTime must be HH:MM (24-hour format)."),
-  endTime: z
-    .string({ message: "endTime is required." })
-    .regex(timeRegex, "endTime must be HH:MM (24-hour format)."),
-  isActive: z.boolean({ message: "isActive is required." }),
-}).refine(
-  (data) => data.startTime < data.endTime,
-  { message: "startTime must be before endTime.", path: ["endTime"] }
-);
+const DAY_VALUES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
 
-// POST /tutors/availability/slot — add a single slot
-export const addSlotSchema = z.object({
-  body: slotSchema,
-});
+// ─────────────────────────────────────────────────────────────
+//  SLOT SCHEMA
+//
+//  ⚠️  No .default() here — Zod v4 + validateRequest middleware
+//  drops fields that have defaults when using safeParseAsync.
+//  isActive is fully optional — service defaults it to true.
+// ─────────────────────────────────────────────────────────────
 
-// PUT /tutors/availability  — full replace all slots
-export const setAvailabilitySchema = z.object({
+const slotSchema = z
+  .object({
+    dayOfWeek: z.enum(DAY_VALUES, {
+      message: `dayOfWeek must be one of: ${DAY_VALUES.join(", ")}.`,
+    }),
+    startTime: z
+      .string({ message: "startTime is required." })
+      .regex(timeRegex, 'startTime must be HH:MM 24-hour format, e.g. "09:00"'),
+    endTime: z
+      .string({ message: "endTime is required." })
+      .regex(timeRegex, 'endTime must be HH:MM 24-hour format, e.g. "11:00"'),
+    isActive: z.boolean().optional(),   // ← optional, no default()
+  })
+  .refine((data) => data.startTime < data.endTime, {
+    message: "startTime must be before endTime.",
+    path: ["endTime"],
+  });
+
+// ─────────────────────────────────────────────────────────────
+//  PUT /availability  — full replace
+//
+//  Postman body:
+//  {
+//    "slots": [
+//      { "dayOfWeek": "MON", "startTime": "10:00", "endTime": "12:00" },
+//      { "dayOfWeek": "WED", "startTime": "14:00", "endTime": "16:00" }
+//    ]
+//  }
+// ─────────────────────────────────────────────────────────────
+
+const setAvailabilitySchema = z.object({
   body: z.object({
     slots: z
       .array(slotSchema)
@@ -34,34 +51,57 @@ export const setAvailabilitySchema = z.object({
   }),
 });
 
-// PATCH /tutors/availability/:id  — update a single slot
-export const updateSlotSchema = z.object({
-  body: z.object({
-    startTime: z
-      .string()
-      .regex(timeRegex, "startTime must be HH:MM (24-hour format).")
-      .optional(),
-    endTime: z
-      .string()
-      .regex(timeRegex, "endTime must be HH:MM (24-hour format).")
-      .optional(),
-    isActive: z.boolean().optional(),
-  })
-  .refine(
-    (data) => Object.keys(data).length > 0,
-    { message: "Provide at least one field to update." }
-  )
-  .refine(
-    (data) => {
-      if (data.startTime && data.endTime) return data.startTime < data.endTime;
-      return true;
-    },
-    { message: "startTime must be before endTime.", path: ["endTime"] }
-  ),
+// ─────────────────────────────────────────────────────────────
+//  POST /availability/slot  — add single slot
+//
+//  Postman body:
+//  { "dayOfWeek": "MON", "startTime": "10:00", "endTime": "12:00" }
+// ─────────────────────────────────────────────────────────────
+
+const addSlotSchema = z.object({
+  body: slotSchema,
 });
 
-// GET /tutors/:tutorId/availability/check
-export const checkAvailabilitySchema = z.object({
+// ─────────────────────────────────────────────────────────────
+//  PATCH /availability/slot/:slotId  — update one slot
+//
+//  Postman body (send only what you want to change):
+//  { "startTime": "11:00" }
+//  { "isActive": false }
+//  { "startTime": "11:00", "endTime": "13:00" }
+// ─────────────────────────────────────────────────────────────
+
+const updateSlotSchema = z.object({
+  body: z
+    .object({
+      startTime: z
+        .string()
+        .regex(timeRegex, "startTime must be HH:MM (24-hour format).")
+        .optional(),
+      endTime: z
+        .string()
+        .regex(timeRegex, "endTime must be HH:MM (24-hour format).")
+        .optional(),
+      isActive: z.boolean().optional(),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+      message: "Provide at least one field to update.",
+    })
+    .refine(
+      (data) => {
+        if (data.startTime && data.endTime) return data.startTime < data.endTime;
+        return true;
+      },
+      { message: "startTime must be before endTime.", path: ["endTime"] }
+    ),
+});
+
+// ─────────────────────────────────────────────────────────────
+//  GET /availability/:tutorId/check
+//  Query: ?bookingDate=2025-08-10&startTime=10:00&endTime=11:00
+// ─────────────────────────────────────────────────────────────
+
+const checkAvailabilitySchema = z.object({
   query: z.object({
     bookingDate: z
       .string({ message: "bookingDate is required." })
@@ -76,8 +116,8 @@ export const checkAvailabilitySchema = z.object({
 });
 
 export const AvailabilityValidation = {
-  addSlotSchema,
   setAvailabilitySchema,
+  addSlotSchema,
   updateSlotSchema,
   checkAvailabilitySchema,
 };

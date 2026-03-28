@@ -5,10 +5,10 @@ export const validateRequest = (zodSchema: ZodObject<any>) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedResult = await zodSchema.safeParseAsync({
-        body: req.body,
-        query: req.query,
-        params: req.params,
-        cookies: req.cookies,
+        body: req.body || {},
+        query: req.query || {},
+        params: req.params || {},
+        cookies: req.cookies || {},
       });
 
       if (!parsedResult.success) {

@@ -1,12 +1,16 @@
 model Availability {
   id        String       @id @default(uuid())
-  tutorId   String
+  tutorId   String?
+  studentId String?
   dayOfWeek DayOfWeek
   startTime String      
   endTime   String
-  isActive  Boolean
+  isActive  Boolean      @default(true)
 
-  tutor     TutorProfile @relation(fields: [tutorId], references: [id])
+  tutor     TutorProfile? @relation(fields: [tutorId], references: [id])
+  student   User?         @relation("studentAvailability", fields: [studentId], references: [id])
+
+  @@map("availability")
 }
 
 

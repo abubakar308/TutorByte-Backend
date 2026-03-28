@@ -1,5 +1,5 @@
 import status from "http-status";
-import { DayOfWeek } from "../../../generated/prisma/enums";
+import { DayOfWeek, UserRole } from "../../../generated/prisma/enums";
 
 import {
   IAvailabilityCheckPayload,
@@ -55,16 +55,16 @@ const getDayOfWeekFromDate = (dateStr: string): DayOfWeek => {
   return DAY_ORDER[day];
 };
 
-/** Load own TutorProfile — throws 404 if not found */
-const getOwnProfile = async (userId: string) => {
-  const profile = await prisma.tutorProfile.findUnique({ where: { userId } });
-  if (!profile) {
-    throw new AppError(
-      status.NOT_FOUND,
-      "Tutor profile not found. Please create your profile first."
-    );
+/** Load own ID — returns tutorProfile.id for TUTOR, or userId for STUDENT */
+const getTargetIds = async (user: IRequestUser) => {
+  if (user.role === UserRole.TUTOR) {
+    const profile = await prisma.tutorProfile.findUnique({ where: { userId: user.userId } });
+    if (!profile) {
+      throw new AppError(status.NOT_FOUND, "Tutor profile not found.");
+    }
+    return { tutorId: profile.id };
   }
-  return profile;
+  return { studentId: user.userId };
 };
 
 /** Detect overlapping slots within the same day */
@@ -105,27 +105,26 @@ const setAvailability = async (
   user: IRequestUser,
   payload: ISetAvailabilityPayload
 ) => {
-  const profile = await getOwnProfile(user.userId);
+  const ids = await getTargetIds(user);
 
   // Validate no overlapping slots on the same day
   assertNoOverlaps(payload.slots);
 
   // Full replace inside a transaction
   await prisma.$transaction([
-    prisma.availability.deleteMany({ where: { tutorId: profile.id } }),
+    prisma.availability.deleteMany({ where: ids }),
     prisma.availability.createMany({
       data: payload.slots.map((slot) => ({
-        tutorId: profile.id,
+        ...ids,
         dayOfWeek: slot.dayOfWeek,
         startTime: slot.startTime,
         endTime: slot.endTime,
-        isActive: slot.isActive,
+        isActive: slot.isActive !== undefined ? slot.isActive : true,
       })),
     }),
   ]);
 
-  // Return grouped result
-  return getGroupedAvailability(profile.id);
+  return getGroupedAvailability(ids);
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -133,11 +132,11 @@ const setAvailability = async (
 // ─────────────────────────────────────────────────────────────
 
 const addSlot = async (user: IRequestUser, slot: IAvailabilitySlot) => {
-  const profile = await getOwnProfile(user.userId);
+  const ids = await getTargetIds(user);
 
   // Check new slot doesn't overlap existing slots on the same day
   const existingSlots = await prisma.availability.findMany({
-    where: { tutorId: profile.id, dayOfWeek: slot.dayOfWeek },
+    where: { ...ids, dayOfWeek: slot.dayOfWeek },
   });
 
   for (const existing of existingSlots) {
@@ -152,11 +151,11 @@ const addSlot = async (user: IRequestUser, slot: IAvailabilitySlot) => {
 
   const newSlot = await prisma.availability.create({
     data: {
-      tutorId: profile.id,
+      ...ids,
       dayOfWeek: slot.dayOfWeek,
       startTime: slot.startTime,
       endTime: slot.endTime,
-      isActive: slot.isActive,
+      isActive: slot.isActive !== undefined ? slot.isActive : true,
     },
   });
 
@@ -172,8 +171,7 @@ const updateSlot = async (
   slotId: string,
   data: IUpdateAvailabilitySlot
 ) => {
-  const profile = await getOwnProfile(user.userId);
-
+  const ids = await getTargetIds(user);
   const slot = await prisma.availability.findUnique({ where: { id: slotId } });
 
   if (!slot) {
@@ -181,7 +179,7 @@ const updateSlot = async (
   }
 
   // Ownership check
-  if (slot.tutorId !== profile.id) {
+  if ((ids.tutorId && slot.tutorId !== ids.tutorId) || (ids.studentId && slot.studentId !== ids.studentId)) {
     throw new AppError(status.FORBIDDEN, "You can only update your own availability slots.");
   }
 
@@ -193,15 +191,15 @@ const updateSlot = async (
   }
 
   // Check updated times don't overlap other slots on the same day (excluding self)
-  const sibling = await prisma.availability.findMany({
+  const siblings = await prisma.availability.findMany({
     where: {
-      tutorId: profile.id,
+      ...ids,
       dayOfWeek: slot.dayOfWeek,
       id: { not: slotId },
     },
   });
 
-  for (const s of sibling) {
+  for (const s of siblings) {
     if (overlaps(newStart, newEnd, s.startTime, s.endTime)) {
       throw new AppError(
         status.CONFLICT,
@@ -228,15 +226,14 @@ const updateSlot = async (
 // ─────────────────────────────────────────────────────────────
 
 const deleteSlot = async (user: IRequestUser, slotId: string) => {
-  const profile = await getOwnProfile(user.userId);
-
+  const ids = await getTargetIds(user);
   const slot = await prisma.availability.findUnique({ where: { id: slotId } });
 
   if (!slot) {
     throw new AppError(status.NOT_FOUND, "Availability slot not found.");
   }
 
-  if (slot.tutorId !== profile.id) {
+  if ((ids.tutorId && slot.tutorId !== ids.tutorId) || (ids.studentId && slot.studentId !== ids.studentId)) {
     throw new AppError(status.FORBIDDEN, "You can only delete your own availability slots.");
   }
 
@@ -246,16 +243,16 @@ const deleteSlot = async (user: IRequestUser, slotId: string) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-//  GET MY AVAILABILITY  (tutor's own — all slots, grouped)
+//  GET MY AVAILABILITY
 // ─────────────────────────────────────────────────────────────
 
 const getMyAvailability = async (user: IRequestUser) => {
-  const profile = await getOwnProfile(user.userId);
-  return getGroupedAvailability(profile.id);
+  const ids = await getTargetIds(user);
+  return getGroupedAvailability(ids);
 };
 
 // ─────────────────────────────────────────────────────────────
-//  GET PUBLIC AVAILABILITY  (by tutorProfileId — only active)
+//  GET PUBLIC AVAILABILITY
 // ─────────────────────────────────────────────────────────────
 
 const getPublicAvailability = async (tutorProfileId: string) => {
@@ -272,7 +269,6 @@ const getPublicAvailability = async (tutorProfileId: string) => {
     orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
   });
 
-  // Group by day — only show active slots to public
   return DAY_ORDER.map((day) => ({
     dayOfWeek: day,
     dayLabel: DAY_LABELS[day],
@@ -281,7 +277,7 @@ const getPublicAvailability = async (tutorProfileId: string) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-//  CHECK AVAILABILITY  (is a specific slot free?)
+//  CHECK AVAILABILITY
 // ─────────────────────────────────────────────────────────────
 
 const checkAvailability = async (payload: IAvailabilityCheckPayload) => {
@@ -295,7 +291,6 @@ const checkAvailability = async (payload: IAvailabilityCheckPayload) => {
     throw new AppError(status.NOT_FOUND, "Tutor not found.");
   }
 
-  // 1. Check tutor has an ACTIVE slot covering this day + time range
   const requestedDay = getDayOfWeekFromDate(bookingDate);
 
   const coveringSlot = await prisma.availability.findFirst({
@@ -303,35 +298,23 @@ const checkAvailability = async (payload: IAvailabilityCheckPayload) => {
       tutorId,
       dayOfWeek: requestedDay,
       isActive: true,
+      startTime: { lte: startTime },
+      endTime: { gte: endTime },
     },
   });
 
   if (!coveringSlot) {
     return {
       available: false,
-      reason: `Tutor is not available on ${DAY_LABELS[requestedDay]}s.`,
+      reason: `Tutor is not available during the requested time (${startTime}–${endTime}) on ${DAY_LABELS[requestedDay]}s.`,
     };
   }
-
-  // Check the requested time falls within the slot
-  if (
-    toMinutes(startTime) < toMinutes(coveringSlot.startTime) ||
-    toMinutes(endTime) > toMinutes(coveringSlot.endTime)
-  ) {
-    return {
-      available: false,
-      reason: `Tutor is only available ${coveringSlot.startTime}–${coveringSlot.endTime} on ${DAY_LABELS[requestedDay]}s.`,
-    };
-  }
-
-  // 2. Check no conflicting PENDING or ACCEPTED booking exists
-  const { BookingStatus } = await import("../../../generated/prisma/enums");
 
   const conflict = await prisma.booking.findFirst({
     where: {
       tutorId,
       bookingDate: new Date(bookingDate),
-      status: { in: [BookingStatus.PENDING, BookingStatus.ACCEPTED] },
+      status: { in: ["PENDING", "ACCEPTED"] },
     },
   });
 
@@ -350,16 +333,15 @@ const checkAvailability = async (payload: IAvailabilityCheckPayload) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-//  TOGGLE SLOT ACTIVE/INACTIVE
+//  TOGGLE SLOT
 // ─────────────────────────────────────────────────────────────
 
 const toggleSlot = async (user: IRequestUser, slotId: string) => {
-  const profile = await getOwnProfile(user.userId);
-
+  const ids = await getTargetIds(user);
   const slot = await prisma.availability.findUnique({ where: { id: slotId } });
 
   if (!slot) throw new AppError(status.NOT_FOUND, "Availability slot not found.");
-  if (slot.tutorId !== profile.id) {
+  if ((ids.tutorId && slot.tutorId !== ids.tutorId) || (ids.studentId && slot.studentId !== ids.studentId)) {
     throw new AppError(status.FORBIDDEN, "You can only toggle your own slots.");
   }
 
@@ -372,12 +354,12 @@ const toggleSlot = async (user: IRequestUser, slotId: string) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-//  PRIVATE: group slots by day (used internally)
+//  PRIVATE HELPERS
 // ─────────────────────────────────────────────────────────────
 
-const getGroupedAvailability = async (tutorProfileId: string) => {
+const getGroupedAvailability = async (ids: { tutorId?: string; studentId?: string }) => {
   const slots = await prisma.availability.findMany({
-    where: { tutorId: tutorProfileId },
+    where: ids,
     orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
   });
 
@@ -389,10 +371,6 @@ const getGroupedAvailability = async (tutorProfileId: string) => {
     totalCount: slots.filter((s) => s.dayOfWeek === day).length,
   }));
 };
-
-// ─────────────────────────────────────────────────────────────
-//  EXPORTS
-// ─────────────────────────────────────────────────────────────
 
 export const availabilityService = {
   setAvailability,

@@ -3,6 +3,8 @@ import { BookingStatus } from "../../../generated/prisma/enums";
 import { IBookingCreate, IBookingQuery, IBookingUpdate, IReviewCreate } from "./booking.interface";
 import { prisma } from "../../lib/prisma";
 import AppError from "../../errorHelper/AppError";
+import { availabilityService } from "../availability/availability.service";
+import { UserRole } from "../../../generated/prisma/enums";
 
 // ─────────────────────────────────────────────────────────────
 //  HELPERS
@@ -35,7 +37,7 @@ const getPagination = (page = 1, limit = 10) => ({
 // ─────────────────────────────────────────────────────────────
 
 const createBooking = async (studentId: string, data: IBookingCreate) => {
-  const { tutorId, bookingDate, startTime, endTime, totalPrice } = data;
+  const { tutorId, subjectId, bookingDate, startTime, endTime, totalPrice } = data;
 
   // 1. Tutor must exist and be approved
   const tutor = await prisma.tutorProfile.findUnique({
@@ -65,31 +67,19 @@ const createBooking = async (studentId: string, data: IBookingCreate) => {
     throw new AppError(status.BAD_REQUEST, "Booking date must be in the future.");
   }
 
-  // 4. Check for conflicting bookings on the same tutor + date
-  // (tutor already has an ACCEPTED or PENDING booking that overlaps)
-  const conflictingBooking = await prisma.booking.findFirst({
-    where: {
-      tutorId,
-      bookingDate: bookingDateObj,
-      status: { in: [BookingStatus.PENDING, BookingStatus.ACCEPTED] },
-    },
+  // 4. Check if the tutor is available during the requested time slot
+  const availability = await availabilityService.checkAvailability({
+    tutorId,
+    bookingDate,
+    startTime,
+    endTime,
   });
 
-  if (conflictingBooking) {
-    const conflicts = timesOverlap(
-      startTime, endTime,
-      conflictingBooking.startTime, conflictingBooking.endTime
-    );
-
-    if (conflicts) {
-      throw new AppError(
-        status.CONFLICT,
-        `This tutor already has a booking from ${conflictingBooking.startTime} to ${conflictingBooking.endTime} on that date.`
-      );
-    }
+  if (!availability.available) {
+    throw new AppError(status.CONFLICT, availability.reason || "Tutor is not available at this time.");
   }
 
-  // 5. Check student doesn't already have a booking at the same time
+  // 5. Check student doesn't already have an overlapping booking
   const studentConflict = await prisma.booking.findFirst({
     where: {
       studentId,
@@ -98,18 +88,11 @@ const createBooking = async (studentId: string, data: IBookingCreate) => {
     },
   });
 
-  if (studentConflict) {
-    const conflicts = timesOverlap(
-      startTime, endTime,
-      studentConflict.startTime, studentConflict.endTime
+  if (studentConflict && timesOverlap(startTime, endTime, studentConflict.startTime, studentConflict.endTime)) {
+    throw new AppError(
+      status.CONFLICT,
+      `You already have a booking from ${studentConflict.startTime} to ${studentConflict.endTime} on that date.`
     );
-
-    if (conflicts) {
-      throw new AppError(
-        status.CONFLICT,
-        `You already have a booking from ${studentConflict.startTime} to ${studentConflict.endTime} on that date.`
-      );
-    }
   }
 
   // 6. Create the booking
@@ -117,6 +100,7 @@ const createBooking = async (studentId: string, data: IBookingCreate) => {
     data: {
       studentId,
       tutorId,
+      subjectId,
       bookingDate: bookingDateObj,
       startTime,
       endTime,
@@ -127,10 +111,10 @@ const createBooking = async (studentId: string, data: IBookingCreate) => {
     include: {
       tutor: {
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          user: { select: { id: true, name: true, email: true, image: true } },
         },
       },
-      student: { select: { id: true, name: true, email: true } },
+      student: { select: { id: true, name: true, email: true, image: true } },
     },
   });
 
@@ -151,7 +135,7 @@ const updateBookingStatus = async (
     where: { id: bookingId },
     include: {
       tutor: true,
-      student: { select: { id: true, name: true, email: true } },
+      student: { select: { id: true, name: true, email: true, image: true } },
     },
   });
 
@@ -223,10 +207,10 @@ const updateBookingStatus = async (
     include: {
       tutor: {
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          user: { select: { id: true, name: true, email: true, image: true } },
         },
       },
-      student: { select: { id: true, name: true, email: true } },
+      student: { select: { id: true, name: true, email: true, image: true } },
       payment: true,
     },
   });
@@ -256,7 +240,7 @@ const getBookingsByStudent = async (
       include: {
         tutor: {
           include: {
-            user: { select: { id: true, name: true, avatarUrl: true } },
+            user: { select: { id: true, name: true, image: true } },
           },
         },
         payment: { select: { status: true, amount: true } },
@@ -307,7 +291,7 @@ const getBookingsByTutor = async (
       where,
       include: {
         student: {
-          select: { id: true, name: true, avatarUrl: true, email: true },
+          select: { id: true, name: true, image: true, email: true },
         },
         payment: { select: { status: true, amount: true } },
       },
@@ -338,10 +322,10 @@ const getBookingById = async (requesterId: string, requesterRole: string, bookin
     include: {
       tutor: {
         include: {
-          user: { select: { id: true, name: true, avatarUrl: true, email: true } },
+          user: { select: { id: true, name: true, image: true, email: true } },
         },
       },
-      student: { select: { id: true, name: true, avatarUrl: true, email: true } },
+      student: { select: { id: true, name: true, image: true, email: true } },
       payment: true,
     },
   });
@@ -417,7 +401,7 @@ const createReview = async (studentId: string, data: IReviewCreate) => {
         comment: data.comment,
       },
       include: {
-        student: { select: { id: true, name: true, avatarUrl: true } },
+        student: { select: { id: true, name: true, image: true } },
       },
     });
 
@@ -462,7 +446,7 @@ const getReviewsByTutor = async (
     prisma.review.findMany({
       where: { tutorId },
       include: {
-        student: { select: { id: true, name: true, avatarUrl: true } },
+        student: { select: { id: true, name: true, image: true } },
       },
       orderBy: { createdAt: "desc" },
       skip,

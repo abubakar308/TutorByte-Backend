@@ -23,6 +23,7 @@ model User {
   receivedMessages Message[]      @relation("receivedMessages")
   notifications    Notification[]
   adminLogs        AdminLog[]     @relation("adminLogs")
+  availabilities   Availability[] @relation("studentAvailability")
 
   @@map("user")
 }

@@ -12,15 +12,7 @@ import { prisma } from "../../lib/prisma";
 import { deleteFromCloudinary, getPublicIdFromUrl, uploadToCloudinary } from "../../config/cloudinary.config";
 import { DayOfWeek, Prisma } from "../../../generated/prisma/client";
 
-const DAYS_ENUM = [
-  DayOfWeek.SUN,
-  DayOfWeek.MON,
-  DayOfWeek.TUE,
-  DayOfWeek.WED,
-  DayOfWeek.THU,
-  DayOfWeek.FRI,
-  DayOfWeek.SAT,
-] as const;
+
 
 const createTutorProfile = async (
   user: IRequestUser,
@@ -194,89 +186,6 @@ const uploadAvatar = async (user: IRequestUser, fileBuffer: Buffer, mimetype: st
 };
 
 
-const setAvailability = async (
-  user: IRequestUser,
-  payload: ISetAvailabilityPayload
-) => {
-  const profile = await getOwnProfile(user.userId);
-
-  // Validate slots
-  for (const slot of payload.slots) {
-    if (slot.dayOfWeek < 0 || slot.dayOfWeek > 6) {
-      throw new AppError(
-        status.BAD_REQUEST,
-        `Invalid dayOfWeek: ${slot.dayOfWeek}. Must be 0 (Sun) to 6 (Sat).`
-      );
-    }
-
-    if (slot.startTime >= slot.endTime) {
-      throw new AppError(
-        status.BAD_REQUEST,
-        `startTime must be before endTime in each slot.`
-      );
-    }
-
-    if (!isValidTime(slot.startTime) || !isValidTime(slot.endTime)) {
-      throw new AppError(
-        status.BAD_REQUEST,
-        `Invalid time format in slot. Use "HH:MM" (24-hour).`
-      );
-    }
-
-    if (slot.startTime >= slot.endTime) {
-      throw new AppError(
-        status.BAD_REQUEST,
-        `startTime must be before endTime in each slot.`
-      );
-    }
-  }
-
-  // Check for overlapping slots on the same day
-  checkSlotOverlaps(payload.slots);
-
-  // Full replace — delete all existing slots then re-create
-  await prisma.$transaction([
-    prisma.availability.deleteMany({ where: { tutorId: profile.id } }),
-    prisma.availability.createMany({
-      data: payload.slots.map((slot) => ({
-        tutorId: profile.id,
-        dayOfWeek: DAYS_ENUM[slot.dayOfWeek],
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        isActive: true,
-      })),
-    }),
-  ]);
-
-  const slots = await prisma.availability.findMany({
-    where: { tutorId: profile.id },
-    orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
-  });
-
-  return slots;
-};
-
-// ─────────────────────────────────────────────────────────────
-//  GET OWN AVAILABILITY
-// ─────────────────────────────────────────────────────────────
-
-const getMyAvailability = async (user: IRequestUser) => {
-  const profile = await getOwnProfile(user.userId);
-
-  const slots = await prisma.availability.findMany({
-    where: { tutorId: profile.id },
-    orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
-  });
-
-  // Group by day for easier frontend consumption
-  const grouped = Array.from({ length: 7 }, (_, i) => ({
-    dayOfWeek: i,
-    dayName: ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][i],
-    slots: slots.filter((s) => s.dayOfWeek === DAYS_ENUM[i]),
-  }));
-
-  return grouped;
-};
 
 // ─────────────────────────────────────────────────────────────
 //  GET MY PROFILE  (tutor's own full view)
@@ -617,35 +526,6 @@ const getOwnProfile = async (userId: string) => {
   return profile;
 };
 
-/** "HH:MM" validation */
-const isValidTime = (time: string): boolean =>
-  /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
-
-/** Detect overlapping availability slots on the same day */
-const checkSlotOverlaps = (slots: { dayOfWeek: number; startTime: string; endTime: string }[]) => {
-  const byDay: Record<number, { startTime: string; endTime: string }[]> = {};
-
-  for (const slot of slots) {
-    if (!byDay[slot.dayOfWeek]) byDay[slot.dayOfWeek] = [];
-    byDay[slot.dayOfWeek].push({ startTime: slot.startTime, endTime: slot.endTime });
-  }
-
-  for (const [day, daySlots] of Object.entries(byDay)) {
-    const sorted = [...daySlots].sort((a, b) =>
-      a.startTime.localeCompare(b.startTime)
-    );
-
-    for (let i = 0; i < sorted.length - 1; i++) {
-      if (sorted[i].endTime > sorted[i + 1].startTime) {
-        const dayName = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][Number(day)];
-        throw new AppError(
-          status.BAD_REQUEST,
-          `Overlapping slots on ${dayName}: ${sorted[i].startTime}–${sorted[i].endTime} overlaps with ${sorted[i + 1].startTime}–${sorted[i + 1].endTime}`
-        );
-      }
-    }
-  }
-};
 
 /** Sync the TutorSearchIndex denormalized table after profile changes */
 /*
@@ -698,8 +578,6 @@ export const TutorServices = {
   createTutorProfile,
   updateTutorProfile,
   uploadAvatar,
-  setAvailability,
-  getMyAvailability,
   getMyProfile,
   getPublicProfile,
   searchTutors,
