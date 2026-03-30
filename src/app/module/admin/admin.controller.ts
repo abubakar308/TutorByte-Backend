@@ -85,6 +85,30 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const approveTutor = catchAsync(async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+  const adminId = (req as any).user.userId;
+  const result = await AdminService.approveTutor(id, adminId);
+  sendResponse(res, {
+    httpStatusCode: httpStatus.OK,
+    success: true,
+    message: "Tutor approved successfully",
+    data: result,
+  });
+});
+
+const rejectTutor = catchAsync(async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+  const adminId = (req as any).user.userId;
+  const result = await AdminService.rejectTutor(id, adminId);
+  sendResponse(res, {
+    httpStatusCode: httpStatus.OK,
+    success: true,
+    message: "Tutor rejected and role updated to student",
+    data: result,
+  });
+});
+
 export const AdminController = {
   getAllUsers,
   updateUserStatus,
@@ -93,4 +117,6 @@ export const AdminController = {
   getAdminLogs,
   createAdmin,
   deleteUser,
+  approveTutor,
+  rejectTutor,
 };

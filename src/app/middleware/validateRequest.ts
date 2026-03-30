@@ -15,16 +15,18 @@ export const validateRequest = (zodSchema: ZodObject<any>) => {
         return next(parsedResult.error);
       }
 
-      // Update request properties with parsed/transformed data
       if (parsedResult.data.body) {
         req.body = parsedResult.data.body;
       }
+
       if (parsedResult.data.query) {
         req.query = parsedResult.data.query as any;
       }
+
       if (parsedResult.data.params) {
         req.params = parsedResult.data.params as any;
       }
+
       if (parsedResult.data.cookies) {
         req.cookies = parsedResult.data.cookies;
       }

@@ -25,8 +25,22 @@ const createAdminValidationSchema = z.object({
   }),
 });
 
+ const approveTutorValidationSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Invalid user ID"),
+  }),
+});
+
+ const rejectTutorValidationSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Invalid user ID"),
+  }),
+});
+
 export const AdminValidation = {
   updateUserStatusValidationSchema,
   updateUserRoleValidationSchema,
   createAdminValidationSchema,
+  approveTutorValidationSchema,
+  rejectTutorValidationSchema,
 };

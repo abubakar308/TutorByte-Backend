@@ -30,7 +30,7 @@ const getAllUsers = async (query: any) => {
       createdAt: 'desc',
     },
     include: {
-        tutorProfile: true,
+      tutorProfile: true
     }
   });
   return result;
@@ -188,6 +188,79 @@ const deleteUser = async (userId: string, adminId: string) => {
   return result;
 };
 
+const approveTutor = async (userId: string, adminId: string) => {
+  const result = await prisma.$transaction(async (tx) => {
+    // Check if user exists and is a tutor
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      include: { tutorProfile: true },
+    });
+
+    if (!user) {
+      throw new AppError(status.NOT_FOUND, "Tutor not found");
+    }
+
+    if (user.role !== UserRole.TUTOR) {
+      throw new AppError(status.BAD_REQUEST, "User is not a tutor");
+    }
+
+    if (!user.tutorProfile) {
+      throw new AppError(status.BAD_REQUEST, "Tutor profile not found");
+    }
+
+    // Approve the tutor
+    await tx.tutorProfile.update({
+      where: { userId: userId },
+      data: { isApproved: true },
+    });
+
+    await tx.adminLog.create({
+      data: {
+        adminId,
+        action: `Approved tutor: ${user.email} (${user.id})`,
+      },
+    });
+
+    return { message: "Tutor approved successfully" };
+  });
+
+  return result;
+};
+
+const rejectTutor = async (userId: string, adminId: string) => {
+  const result = await prisma.$transaction(async (tx) => {
+    // Check if user exists and is a tutor
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new AppError(status.NOT_FOUND, "Tutor not found");
+    }
+
+    if (user.role !== UserRole.TUTOR) {
+      throw new AppError(status.BAD_REQUEST, "User is not a tutor");
+    }
+
+    // Update role to student
+    await tx.user.update({
+      where: { id: userId },
+      data: { role: UserRole.STUDENT },
+    });
+
+    await tx.adminLog.create({
+      data: {
+        adminId,
+        action: `Rejected tutor and changed role to student: ${user.email} (${user.id})`,
+      },
+    });
+
+    return { message: "Tutor rejected and role updated to student" };
+  });
+
+  return result;
+};
+
 export const AdminService = {
   getAllUsers,
   updateUserStatus,
@@ -196,4 +269,6 @@ export const AdminService = {
   getAdminLogs,
   createAdmin,
   deleteUser,
+  approveTutor,
+  rejectTutor,
 };

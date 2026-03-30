@@ -48,6 +48,21 @@ router.patch(
   AdminController.updateUserRole
 );
 
+// Tutor Management
+router.patch(
+  "/tutors/:id/approve",
+  checkAuth(UserRole.ADMIN),
+  validateRequest(AdminValidation.approveTutorValidationSchema),
+  AdminController.approveTutor
+);
+
+router.patch(
+  "/tutors/:id/reject",
+  checkAuth(UserRole.ADMIN),
+  validateRequest(AdminValidation.rejectTutorValidationSchema),
+  AdminController.rejectTutor
+);
+
 router.delete(
   "/users/:id",
   checkAuth(UserRole.ADMIN),

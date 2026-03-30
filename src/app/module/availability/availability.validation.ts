@@ -14,16 +14,17 @@ const DAY_VALUES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
 
 const slotSchema = z
   .object({
-    dayOfWeek: z.enum(DAY_VALUES, {
-      message: `dayOfWeek must be one of: ${DAY_VALUES.join(", ")}.`,
-    }),
+    dayOfWeek: z.preprocess(
+      (value) => (typeof value === "string" ? value.trim().toUpperCase() : value),
+      z.enum(DAY_VALUES)
+    ),
     startTime: z
       .string({ message: "startTime is required." })
       .regex(timeRegex, 'startTime must be HH:MM 24-hour format, e.g. "09:00"'),
     endTime: z
       .string({ message: "endTime is required." })
       .regex(timeRegex, 'endTime must be HH:MM 24-hour format, e.g. "11:00"'),
-    isActive: z.boolean().optional(),   // ← optional, no default()
+    isActive: z.boolean().optional(),
   })
   .refine((data) => data.startTime < data.endTime, {
     message: "startTime must be before endTime.",

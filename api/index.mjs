@@ -330,6 +330,7 @@ var auth = betterAuth({
 });
 
 // src/app.ts
+import cors from "cors";
 import cookieParser from "cookie-parser";
 
 // src/app/routes/index.ts
@@ -2215,9 +2216,6 @@ var getAllUsers = async (query) => {
     where,
     orderBy: {
       createdAt: "desc"
-    },
-    include: {
-      tutorProfile: true
     }
   });
   return result;
@@ -2346,6 +2344,60 @@ var deleteUser = async (userId, adminId) => {
   });
   return result;
 };
+var approveTutor = async (tutorId, adminId) => {
+  const result = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: tutorId },
+      include: { tutorProfile: true }
+    });
+    if (!user) {
+      throw new AppError_default(status10.NOT_FOUND, "Tutor not found");
+    }
+    if (user.role !== UserRole.TUTOR) {
+      throw new AppError_default(status10.BAD_REQUEST, "User is not a tutor");
+    }
+    if (!user.tutorProfile) {
+      throw new AppError_default(status10.BAD_REQUEST, "Tutor profile not found");
+    }
+    await tx.tutorProfile.update({
+      where: { userId: tutorId },
+      data: { isApproved: true }
+    });
+    await tx.adminLog.create({
+      data: {
+        adminId,
+        action: `Approved tutor: ${user.email} (${tutorId})`
+      }
+    });
+    return { message: "Tutor approved successfully" };
+  });
+  return result;
+};
+var rejectTutor = async (tutorId, adminId) => {
+  const result = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: tutorId }
+    });
+    if (!user) {
+      throw new AppError_default(status10.NOT_FOUND, "Tutor not found");
+    }
+    if (user.role !== UserRole.TUTOR) {
+      throw new AppError_default(status10.BAD_REQUEST, "User is not a tutor");
+    }
+    await tx.user.update({
+      where: { id: tutorId },
+      data: { role: UserRole.STUDENT }
+    });
+    await tx.adminLog.create({
+      data: {
+        adminId,
+        action: `Rejected tutor and changed role to student: ${user.email} (${tutorId})`
+      }
+    });
+    return { message: "Tutor rejected and role updated to student" };
+  });
+  return result;
+};
 var AdminService = {
   getAllUsers,
   updateUserStatus,
@@ -2353,7 +2405,9 @@ var AdminService = {
   getDashboardStats: getDashboardStats3,
   getAdminLogs,
   createAdmin,
-  deleteUser
+  deleteUser,
+  approveTutor,
+  rejectTutor
 };
 
 // src/app/module/admin/admin.controller.ts
@@ -2429,6 +2483,28 @@ var deleteUser2 = catchAsync(async (req, res) => {
     data: result
   });
 });
+var approveTutor2 = catchAsync(async (req, res) => {
+  const id = req.params.id;
+  const adminId = req.user.userId;
+  const result = await AdminService.approveTutor(id, adminId);
+  sendResponse(res, {
+    httpStatusCode: httpStatus.OK,
+    success: true,
+    message: "Tutor approved successfully",
+    data: result
+  });
+});
+var rejectTutor2 = catchAsync(async (req, res) => {
+  const id = req.params.id;
+  const adminId = req.user.userId;
+  const result = await AdminService.rejectTutor(id, adminId);
+  sendResponse(res, {
+    httpStatusCode: httpStatus.OK,
+    success: true,
+    message: "Tutor rejected and role updated to student",
+    data: result
+  });
+});
 var AdminController = {
   getAllUsers: getAllUsers2,
   updateUserStatus: updateUserStatus2,
@@ -2436,7 +2512,9 @@ var AdminController = {
   getDashboardStats: getDashboardStats4,
   getAdminLogs: getAdminLogs2,
   createAdmin: createAdmin2,
-  deleteUser: deleteUser2
+  deleteUser: deleteUser2,
+  approveTutor: approveTutor2,
+  rejectTutor: rejectTutor2
 };
 
 // src/app/module/admin/admin.validation.ts
@@ -2462,10 +2540,22 @@ var createAdminValidationSchema = z3.object({
     password: z3.string().min(6, "Password must be at least 6 characters")
   })
 });
+var approveTutorValidationSchema = z3.object({
+  params: z3.object({
+    id: z3.string().uuid("Invalid tutor ID")
+  })
+});
+var rejectTutorValidationSchema = z3.object({
+  params: z3.object({
+    id: z3.string().uuid("Invalid tutor ID")
+  })
+});
 var AdminValidation = {
   updateUserStatusValidationSchema,
   updateUserRoleValidationSchema,
-  createAdminValidationSchema
+  createAdminValidationSchema,
+  approveTutorValidationSchema,
+  rejectTutorValidationSchema
 };
 
 // src/app/module/admin/admin.route.ts
@@ -2502,6 +2592,18 @@ router4.patch(
   checkAuth(UserRole.ADMIN),
   validateRequest(AdminValidation.updateUserRoleValidationSchema),
   AdminController.updateUserRole
+);
+router4.patch(
+  "/tutors/:id/approve",
+  checkAuth(UserRole.ADMIN),
+  validateRequest(AdminValidation.approveTutorValidationSchema),
+  AdminController.approveTutor
+);
+router4.patch(
+  "/tutors/:id/reject",
+  checkAuth(UserRole.ADMIN),
+  validateRequest(AdminValidation.rejectTutorValidationSchema),
+  AdminController.rejectTutor
 );
 router4.delete(
   "/users/:id",
@@ -2926,13 +3028,13 @@ import { z as z6 } from "zod";
 var timeRegex3 = /^([01]\d|2[0-3]):[0-5]\d$/;
 var DAY_VALUES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 var slotSchema = z6.object({
-  dayOfWeek: z6.enum(DAY_VALUES, {
-    message: `dayOfWeek must be one of: ${DAY_VALUES.join(", ")}.`
-  }),
+  dayOfWeek: z6.preprocess(
+    (value) => typeof value === "string" ? value.trim().toUpperCase() : value,
+    z6.enum(DAY_VALUES)
+  ),
   startTime: z6.string({ message: "startTime is required." }).regex(timeRegex3, 'startTime must be HH:MM 24-hour format, e.g. "09:00"'),
   endTime: z6.string({ message: "endTime is required." }).regex(timeRegex3, 'endTime must be HH:MM 24-hour format, e.g. "11:00"'),
   isActive: z6.boolean().optional()
-  // ← optional, no default()
 }).refine((data) => data.startTime < data.endTime, {
   message: "startTime must be before endTime.",
   path: ["endTime"]
@@ -3543,6 +3645,15 @@ var IndexRoutes = router9;
 var app = express2();
 app.use(express2.json());
 app.use(cookieParser());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://tutorbyte.vercel.app"
+    ],
+    credentials: true
+  })
+);
 app.use("/api/v1", IndexRoutes);
 app.all("/api/auth", toNodeHandler(auth));
 app.get("/", (req, res) => {

@@ -20,7 +20,7 @@ export interface IUpdateAvailabilitySlot {
 // For checking if a specific datetime is available (used by booking)
 export interface IAvailabilityCheckPayload {
   tutorId: string;      // TutorProfile.id
-  bookingDate: string;  // ISO date string
+  bookingDate: string;  // ISO date string  
   startTime: string;    // "HH:MM"
   endTime: string;      // "HH:MM"
 }
