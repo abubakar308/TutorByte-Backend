@@ -22,7 +22,7 @@ app.use(
 
 app.use("/api/v1", IndexRoutes);
 
-app.all("/api/auth", toNodeHandler(auth));
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.get('/', (req: Request, res: Response) => {
   res.send('TutorByte');

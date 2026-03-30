@@ -2216,6 +2216,9 @@ var getAllUsers = async (query) => {
     where,
     orderBy: {
       createdAt: "desc"
+    },
+    include: {
+      tutorProfile: true
     }
   });
   return result;
@@ -2344,10 +2347,10 @@ var deleteUser = async (userId, adminId) => {
   });
   return result;
 };
-var approveTutor = async (tutorId, adminId) => {
+var approveTutor = async (userId, adminId) => {
   const result = await prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({
-      where: { id: tutorId },
+      where: { id: userId },
       include: { tutorProfile: true }
     });
     if (!user) {
@@ -2360,23 +2363,23 @@ var approveTutor = async (tutorId, adminId) => {
       throw new AppError_default(status10.BAD_REQUEST, "Tutor profile not found");
     }
     await tx.tutorProfile.update({
-      where: { userId: tutorId },
+      where: { userId },
       data: { isApproved: true }
     });
     await tx.adminLog.create({
       data: {
         adminId,
-        action: `Approved tutor: ${user.email} (${tutorId})`
+        action: `Approved tutor: ${user.email} (${user.id})`
       }
     });
     return { message: "Tutor approved successfully" };
   });
   return result;
 };
-var rejectTutor = async (tutorId, adminId) => {
+var rejectTutor = async (userId, adminId) => {
   const result = await prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({
-      where: { id: tutorId }
+      where: { id: userId }
     });
     if (!user) {
       throw new AppError_default(status10.NOT_FOUND, "Tutor not found");
@@ -2385,13 +2388,13 @@ var rejectTutor = async (tutorId, adminId) => {
       throw new AppError_default(status10.BAD_REQUEST, "User is not a tutor");
     }
     await tx.user.update({
-      where: { id: tutorId },
+      where: { id: userId },
       data: { role: UserRole.STUDENT }
     });
     await tx.adminLog.create({
       data: {
         adminId,
-        action: `Rejected tutor and changed role to student: ${user.email} (${tutorId})`
+        action: `Rejected tutor and changed role to student: ${user.email} (${user.id})`
       }
     });
     return { message: "Tutor rejected and role updated to student" };
@@ -2542,12 +2545,12 @@ var createAdminValidationSchema = z3.object({
 });
 var approveTutorValidationSchema = z3.object({
   params: z3.object({
-    id: z3.string().uuid("Invalid tutor ID")
+    id: z3.string().trim().min(1, "Invalid user ID")
   })
 });
 var rejectTutorValidationSchema = z3.object({
   params: z3.object({
-    id: z3.string().uuid("Invalid tutor ID")
+    id: z3.string().trim().min(1, "Invalid user ID")
   })
 });
 var AdminValidation = {
