@@ -439,8 +439,8 @@ var getRefreshToken = (payload) => {
 var setAccessTokenCookie = (res, token) => {
   CookieUtils.setCookie(res, "accessToken", token, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
     maxAge: 60 * 60 * 60 * 24
   });
@@ -448,8 +448,8 @@ var setAccessTokenCookie = (res, token) => {
 var setRefreshTokenCookie = (res, token) => {
   CookieUtils.setCookie(res, "refreshToken", token, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
     maxAge: 60 * 60 * 60 * 24 * 7
   });
@@ -457,8 +457,8 @@ var setRefreshTokenCookie = (res, token) => {
 var setBetterAuthSessionCookie = (res, token) => {
   CookieUtils.setCookie(res, "better-auth.session_token", token, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
     maxAge: 60 * 60 * 60 * 24
   });

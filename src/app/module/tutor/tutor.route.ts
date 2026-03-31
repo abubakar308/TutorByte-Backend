@@ -22,14 +22,21 @@ router.get(
   TutorController.searchTutors
 );
 
+
+
+/**
+ * GET /tutors
+ * Fetch all approved tutors
+ */
+router.get("/", TutorController.getAllTutors);
+
 /**
  * GET /tutors/:tutorId/profile
  * Public profile — only approved tutors are visible
  */
-router.get("/:tutorId/profile", TutorController.getPublicProfile);
+router.get("/:tutorId", TutorController.getPublicProfile);
 
-// ── Tutor-only protected routes ────────────────────────────────
-
+// ── Tutor-only protected routes ──────────────────────────────── 
 /**
  * POST /tutors/profile
  * Create tutor profile (one-time setup after registration)

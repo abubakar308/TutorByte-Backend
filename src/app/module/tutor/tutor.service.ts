@@ -2,7 +2,6 @@ import status from "http-status";
 
 import {
   ICreateTutorProfile,
-  ISetAvailabilityPayload,
   ITutorSearchQuery,
   IUpdateTutorProfile,
 } from "./tutor.interface";
@@ -10,7 +9,7 @@ import { IRequestUser } from "../auth/auth.interface";
 import AppError from "../../errorHelper/AppError";
 import { prisma } from "../../lib/prisma";
 import { deleteFromCloudinary, getPublicIdFromUrl, uploadToCloudinary } from "../../config/cloudinary.config";
-import { DayOfWeek, Prisma } from "../../../generated/prisma/client";
+import { Prisma } from "../../../generated/prisma/client";
 
 
 
@@ -186,6 +185,112 @@ const uploadAvatar = async (user: IRequestUser, fileBuffer: Buffer, mimetype: st
 };
 
 
+// ─────────────────────────────────────────────────────────────
+//  GET ALL TUTORS
+// ─────────────────────────────────────────────────────────────
+const getAllTutors = async () => {
+  const tutors = await prisma.tutorProfile.findMany({
+    where: { isApproved: true },
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+      subjects: {
+        select: {
+          subject: {
+            select: { id: true, name: true }
+          }
+        },
+      },
+      languages: {
+        select: {
+          language: {
+            select: { id: true, name: true }
+          }
+        },
+      },
+      availabilities: {
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+      },
+      reviews: {
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          student: {
+            select: { id: true, name: true },
+          },
+        },
+      },
+      _count: {
+        select: { reviews: true, bookings: true },
+      },
+    },
+  });
+  return tutors;
+};
+
+// ─────────────────────────────────────────────────────────────
+//  GET PUBLIC TUTOR PROFILE (by tutor profile id)
+// ─────────────────────────────────────────────────────────────
+const getPublicProfile = async (tutorProfileId: string) => {
+  const profile = await prisma.tutorProfile.findUnique({
+    where: { id: tutorProfileId, isApproved: true },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          email: true,
+        },
+      },
+      // ✅ এখানে subjects এবং languages যোগ করা হয়েছে যা আগে মিসিং ছিল
+      subjects: {
+        select: {
+          subject: {
+            select: { id: true, name: true }
+          }
+        }
+      },
+      languages: {
+        select: {
+          language: {
+            select: { id: true, name: true }
+          }
+        }
+      },
+      availabilities: {
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+      },
+      reviews: {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+        include: {
+          student: {
+            select: { id: true, name: true, image: true }, // ইমেজও ইনক্লুড করা ভালো
+          },
+        },
+      },
+      _count: {
+        select: { reviews: true, bookings: true },
+      },
+    },
+  });
+
+  if (!profile) {
+    throw new AppError(
+      status.NOT_FOUND,
+      "Tutor profile not found or not yet approved."
+    );
+  }
+
+  return profile;
+};
+
 
 // ─────────────────────────────────────────────────────────────
 //  GET MY PROFILE  (tutor's own full view)
@@ -235,47 +340,6 @@ const getMyProfile = async (user: IRequestUser) => {
   return profile;
 };
 
-// ─────────────────────────────────────────────────────────────
-//  GET PUBLIC TUTOR PROFILE  (by tutor profile id)
-// ─────────────────────────────────────────────────────────────
-
-const getPublicProfile = async (tutorProfileId: string) => {
-  const profile = await prisma.tutorProfile.findUnique({
-    where: { id: tutorProfileId, isApproved: true },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true
-        },
-      },
-      availabilities: {
-        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
-      },
-      reviews: {
-        take: 10,
-        orderBy: { createdAt: "desc" },
-        include: {
-          student: {
-            select: { id: true, name: true },
-          },
-        },
-      },
-      _count: {
-        select: { reviews: true, bookings: true },
-      },
-    },
-  });
-
-  if (!profile) {
-    throw new AppError(
-      status.NOT_FOUND,
-      "Tutor profile not found or not yet approved."
-    );
-  }
-
-  return profile;
-};
 
 // ─────────────────────────────────────────────────────────────
 //  SEARCH TUTORS  (the interview-winning feature)
@@ -579,6 +643,7 @@ export const TutorServices = {
   updateTutorProfile,
   uploadAvatar,
   getMyProfile,
+  getAllTutors,
   getPublicProfile,
   searchTutors,
   getDashboardStats,

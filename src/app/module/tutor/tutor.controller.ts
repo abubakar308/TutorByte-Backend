@@ -48,6 +48,18 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+
+const getAllTutors = catchAsync(async (req: Request, res: Response) => {
+  const result = await TutorServices.getAllTutors();
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Tutors fetched successfully.",
+    data: result,
+  });
+});
+
 // ─────────────────────────────────────────────────────────────
 //  PUBLIC PROFILE
 // ─────────────────────────────────────────────────────────────
@@ -143,6 +155,7 @@ export const TutorController = {
   createTutorProfile,
   updateTutorProfile,
   getMyProfile,
+  getAllTutors,
   getPublicProfile,
   searchTutors,
   uploadAvatar,
