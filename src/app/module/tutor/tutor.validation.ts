@@ -6,9 +6,9 @@ const createProfileSchema = z.object({
   body: z.object({
     bio: z
       .string({ error: "Bio is required." })
-      .min(50, "Bio must be at least 50 characters.")
+      .min(20, "Bio must be at least 20 characters.")
       .max(1000, "Bio must not exceed 1000 characters."),
-
+  
     hourlyRate: z
       .number({ error: "Hourly rate is required." })
       .positive("Hourly rate must be greater than 0.")
@@ -24,7 +24,7 @@ const createProfileSchema = z.object({
       .min(1, "At least one language is required.")
       .max(10, "Maximum 10 languages allowed."),
 
-    experienceYrs: z
+    experienceYears: z
       .number()
       .int()
       .min(0)
@@ -39,7 +39,7 @@ const updateProfileSchema = z.object({
     hourlyRate: z.number().positive().max(10000).optional(),
     subjects: z.array(z.string().uuid()).min(1).max(10).optional(),
     languages: z.array(z.string().uuid()).min(1).max(10).optional(),
-    experienceYrs: z.number().int().min(0).max(50).optional(),
+    experienceYears: z.number().int().min(0).max(50).optional(),
   }),
 });
 
@@ -58,8 +58,6 @@ const availabilitySlotSchema = z.object({
     .string({ error: "endTime is required." })
     .regex(timeRegex, "endTime must be in HH:MM format (24-hour)."),
 
-  isRecurring: z.boolean().optional().default(true),
-
 });
 
 const setAvailabilitySchema = z.object({
@@ -70,15 +68,6 @@ const setAvailabilitySchema = z.object({
       .max(50, "Maximum 50 slots allowed."),
   }),
 });
-
-const deleteCertificateSchema = z.object({
-  body: z.object({
-    certificateUrl: z
-      .string({ error: "certificateUrl is required." })
-      .url("Must be a valid URL."),
-  }),
-});
-
 
 const searchQuerySchema = z.object({
   query: z.object({
@@ -99,6 +88,5 @@ export const TutorValidation = {
   createProfileSchema,
   updateProfileSchema,
   setAvailabilitySchema,
-  deleteCertificateSchema,
   searchQuerySchema,
 };

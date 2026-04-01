@@ -71,7 +71,8 @@ const getMyBookingsAsStudent = catchAsync(async (req: Request, res: Response) =>
     httpStatusCode: status.OK,
     success: true,
     message: "Bookings fetched successfully.",
-    data: result.bookings
+    data: result.bookings,
+    meta: result.meta,
   });
 });
 
@@ -89,6 +90,7 @@ const getMyBookingsAsTutor = catchAsync(async (req: Request, res: Response) => {
     success: true,
     message: "Bookings fetched successfully.",
     data: result.bookings,
+    meta: result.meta,
   });
 });
 

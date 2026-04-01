@@ -79,20 +79,25 @@ const createBooking = async (studentId: string, data: IBookingCreate) => {
   }
 
   // 5. Check student doesn't already have an overlapping booking
-  const studentConflict = await prisma.booking.findFirst({
-    where: {
-      studentId,
-      bookingDate: bookingDateObj,
-      status: { in: [BookingStatus.PENDING, BookingStatus.ACCEPTED] },
-    },
-  });
+const tutorConflict = await prisma.booking.findFirst({
+  where: {
+    tutorId,
+    bookingDate: bookingDateObj,
+    status: { in: [BookingStatus.PENDING, BookingStatus.ACCEPTED] },
+  },
+});
 
-  if (studentConflict && timesOverlap(startTime, endTime, studentConflict.startTime, studentConflict.endTime)) {
-    throw new AppError(
-      status.CONFLICT,
-      `You already have a booking from ${studentConflict.startTime} to ${studentConflict.endTime} on that date.`
-    );
-  }
+if (
+  tutorConflict && 
+  timesOverlap(
+    startTime, 
+    endTime, 
+    new Date(tutorConflict.startTime).toISOString().substring(11, 16),
+    new Date(tutorConflict.endTime).toISOString().substring(11, 16)
+  )
+) {
+  throw new AppError(status.CONFLICT, "Tutor is already booked during this time slot.");
+}
 
   // 6. Create the booking
   const booking = await prisma.booking.create({
@@ -181,6 +186,10 @@ const updateBookingStatus = async (
         "You can only manage your own bookings."
       );
     }
+
+    if (data.status === BookingStatus.ACCEPTED && !data.meetingLink && !booking.meetingLink) {
+  throw new AppError(status.BAD_REQUEST, "Please provide a meeting link to accept the booking.");
+}
 
     if (data.status && data.status !== BookingStatus.CANCELLED) {
       throw new AppError(
