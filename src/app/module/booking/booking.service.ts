@@ -4,7 +4,6 @@ import { IBookingCreate, IBookingQuery, IBookingUpdate, IReviewCreate } from "./
 import { prisma } from "../../lib/prisma";
 import AppError from "../../errorHelper/AppError";
 import { availabilityService } from "../availability/availability.service";
-import { UserRole } from "../../../generated/prisma/enums";
 
 // ─────────────────────────────────────────────────────────────
 //  HELPERS

@@ -54,20 +54,20 @@ const createTutorProfile = async (
       userId: user.userId,
       bio: payload.bio,
       hourlyRate: payload.hourlyRate,
-     subjects: {
-      create: payload.subjects.map((id: string) => ({
-        subject: {
-          connect: { id }
-        }
-      }))
-    },
-     languages: {
-      create: payload.languages.map((id: string) => ({
-        language: {
-          connect: { id }
-        }
-      }))
-    },
+      subjects: {
+        create: payload.subjects.map((id: string) => ({
+          subject: {
+            connect: { id }
+          }
+        }))
+      },
+      languages: {
+        create: payload.languages.map((id: string) => ({
+          language: {
+            connect: { id }
+          }
+        }))
+      },
       experienceYears: payload.experienceYrs ?? 0,
       averageRating: 0,
       totalReviews: 0,
@@ -188,6 +188,7 @@ const uploadAvatar = async (user: IRequestUser, fileBuffer: Buffer, mimetype: st
 // ─────────────────────────────────────────────────────────────
 //  GET ALL TUTORS
 // ─────────────────────────────────────────────────────────────
+
 const getAllTutors = async () => {
   const tutors = await prisma.tutorProfile.findMany({
     where: { isApproved: true },
@@ -236,6 +237,7 @@ const getAllTutors = async () => {
 // ─────────────────────────────────────────────────────────────
 //  GET PUBLIC TUTOR PROFILE (by tutor profile id)
 // ─────────────────────────────────────────────────────────────
+
 const getPublicProfile = async (tutorProfileId: string) => {
   const profile = await prisma.tutorProfile.findUnique({
     where: { id: tutorProfileId, isApproved: true },
@@ -248,7 +250,7 @@ const getPublicProfile = async (tutorProfileId: string) => {
           email: true,
         },
       },
-      // ✅ এখানে subjects এবং languages যোগ করা হয়েছে যা আগে মিসিং ছিল
+
       subjects: {
         select: {
           subject: {
@@ -256,6 +258,7 @@ const getPublicProfile = async (tutorProfileId: string) => {
           }
         }
       },
+
       languages: {
         select: {
           language: {
@@ -317,7 +320,7 @@ const getMyProfile = async (user: IRequestUser) => {
         orderBy: { createdAt: "desc" },
         include: {
           student: {
-            select: { id: true, name: true},
+            select: { id: true, name: true },
           },
         },
       },
@@ -379,11 +382,11 @@ const searchTutors = async (query: ITutorSearchQuery) => {
     // Price range
     ...(minPrice !== undefined || maxPrice !== undefined
       ? {
-          hourlyRate: {
-            ...(minPrice !== undefined && { gte: minPrice }),
-            ...(maxPrice !== undefined && { lte: maxPrice }),
-          },
-        }
+        hourlyRate: {
+          ...(minPrice !== undefined && { gte: minPrice }),
+          ...(maxPrice !== undefined && { lte: maxPrice }),
+        },
+      }
       : {}),
 
     // Minimum rating
@@ -403,10 +406,10 @@ const searchTutors = async (query: ITutorSearchQuery) => {
   // Sort options
   const orderBy: Prisma.TutorProfileOrderByWithRelationInput = (() => {
     switch (sortBy) {
-      case "price_asc":  return { hourlyRate: "asc" };
+      case "price_asc": return { hourlyRate: "asc" };
       case "price_desc": return { hourlyRate: "desc" };
-      case "reviews":    return { totalReviews: "desc" };
-      default:           return { averageRating: "desc" };
+      case "reviews": return { totalReviews: "desc" };
+      default: return { averageRating: "desc" };
     }
   })();
 
@@ -531,7 +534,7 @@ const getDashboardStats = async (user: IRequestUser) => {
       where: {
         tutorId: profile.id,
         status: "ACCEPTED",
-      
+
       },
       take: 5,
       include: {
@@ -546,8 +549,8 @@ const getDashboardStats = async (user: IRequestUser) => {
     lastMonthBookings === 0
       ? 100
       : Math.round(
-          ((monthBookings - lastMonthBookings) / lastMonthBookings) * 100
-        );
+        ((monthBookings - lastMonthBookings) / lastMonthBookings) * 100
+      );
 
   return {
     overview: {

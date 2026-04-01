@@ -880,6 +880,102 @@ var uploadAvatar = async (user, fileBuffer, mimetype) => {
   });
   return { avatarUrl: url };
 };
+var getAllTutors = async () => {
+  const tutors = await prisma.tutorProfile.findMany({
+    where: { isApproved: true },
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+          image: true
+        }
+      },
+      subjects: {
+        select: {
+          subject: {
+            select: { id: true, name: true }
+          }
+        }
+      },
+      languages: {
+        select: {
+          language: {
+            select: { id: true, name: true }
+          }
+        }
+      },
+      availabilities: {
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }]
+      },
+      reviews: {
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          student: {
+            select: { id: true, name: true }
+          }
+        }
+      },
+      _count: {
+        select: { reviews: true, bookings: true }
+      }
+    }
+  });
+  return tutors;
+};
+var getPublicProfile = async (tutorProfileId) => {
+  const profile = await prisma.tutorProfile.findUnique({
+    where: { id: tutorProfileId, isApproved: true },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          email: true
+        }
+      },
+      subjects: {
+        select: {
+          subject: {
+            select: { id: true, name: true }
+          }
+        }
+      },
+      languages: {
+        select: {
+          language: {
+            select: { id: true, name: true }
+          }
+        }
+      },
+      availabilities: {
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }]
+      },
+      reviews: {
+        take: 10,
+        orderBy: { createdAt: "desc" },
+        include: {
+          student: {
+            select: { id: true, name: true, image: true }
+            // ইমেজও ইনক্লুড করা ভালো
+          }
+        }
+      },
+      _count: {
+        select: { reviews: true, bookings: true }
+      }
+    }
+  });
+  if (!profile) {
+    throw new AppError_default(
+      status5.NOT_FOUND,
+      "Tutor profile not found or not yet approved."
+    );
+  }
+  return profile;
+};
 var getMyProfile = async (user) => {
   const profile = await prisma.tutorProfile.findUnique({
     where: { userId: user.userId },
@@ -917,41 +1013,6 @@ var getMyProfile = async (user) => {
     throw new AppError_default(
       status5.NOT_FOUND,
       "Tutor profile not found. Please create your profile first."
-    );
-  }
-  return profile;
-};
-var getPublicProfile = async (tutorProfileId) => {
-  const profile = await prisma.tutorProfile.findUnique({
-    where: { id: tutorProfileId, isApproved: true },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true
-        }
-      },
-      availabilities: {
-        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }]
-      },
-      reviews: {
-        take: 10,
-        orderBy: { createdAt: "desc" },
-        include: {
-          student: {
-            select: { id: true, name: true }
-          }
-        }
-      },
-      _count: {
-        select: { reviews: true, bookings: true }
-      }
-    }
-  });
-  if (!profile) {
-    throw new AppError_default(
-      status5.NOT_FOUND,
-      "Tutor profile not found or not yet approved."
     );
   }
   return profile;
@@ -1162,6 +1223,7 @@ var TutorServices = {
   updateTutorProfile,
   uploadAvatar,
   getMyProfile,
+  getAllTutors,
   getPublicProfile,
   searchTutors,
   getDashboardStats
@@ -1198,6 +1260,15 @@ var getMyProfile2 = catchAsync(async (req, res) => {
     httpStatusCode: status6.OK,
     success: true,
     message: "Tutor profile fetched successfully.",
+    data: result
+  });
+});
+var getAllTutors2 = catchAsync(async (req, res) => {
+  const result = await TutorServices.getAllTutors();
+  sendResponse(res, {
+    httpStatusCode: status6.OK,
+    success: true,
+    message: "Tutors fetched successfully.",
     data: result
   });
 });
@@ -1264,6 +1335,7 @@ var TutorController = {
   createTutorProfile: createTutorProfile2,
   updateTutorProfile: updateTutorProfile2,
   getMyProfile: getMyProfile2,
+  getAllTutors: getAllTutors2,
   getPublicProfile: getPublicProfile2,
   searchTutors: searchTutors2,
   uploadAvatar: uploadAvatar2,
@@ -1367,7 +1439,8 @@ router2.get(
   // validateRequest(TutorValidation.searchQuerySchema),
   TutorController.searchTutors
 );
-router2.get("/:tutorId/profile", TutorController.getPublicProfile);
+router2.get("/", TutorController.getAllTutors);
+router2.get("/:tutorId", TutorController.getPublicProfile);
 router2.post(
   "/profile",
   checkAuth(UserRole.STUDENT, UserRole.TUTOR),

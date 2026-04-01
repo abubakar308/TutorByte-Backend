@@ -1,13 +1,14 @@
 model Payment {
-  id            String      @id @default(uuid())
-  bookingId     String      @unique
-  amount        Decimal     @db.Decimal(8, 2)
-  status        PaymentStatus
-  transactionId String
-  paymentMethod String
-  createdAt     DateTime    @default(now())
+  id              String        @id @default(uuid())
+  bookingId       String        @unique
+  amount          Decimal       @db.Decimal(10, 2)
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?       @unique 
+  gatewayResponse Json?         
+  paymentMethod   String?       // "STRIPE", "SSLCOMMERZ", "BKASH"
+  createdAt       DateTime      @default(now())
 
-  booking       Booking     @relation(fields: [bookingId], references: [id])
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
 }
-
-

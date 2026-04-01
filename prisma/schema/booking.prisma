@@ -4,10 +4,10 @@ model Booking {
   tutorId     String
   subjectId   String
   bookingDate DateTime
-  startTime   String
-  endTime     String
-  status      BookingStatus
-  totalPrice  Decimal       @db.Decimal(8, 2)
+  startTime   DateTime
+  endTime     DateTime
+  status      BookingStatus @default(PENDING)
+  totalPrice  Decimal       @db.Decimal(10, 2)
   meetingLink String?
   createdAt   DateTime      @default(now())
 
@@ -15,4 +15,6 @@ model Booking {
   tutor   TutorProfile @relation(fields: [tutorId], references: [id])
   subject Subject     @relation(fields: [subjectId], references: [id])
   payment Payment?
+
+  @@map("bookings")
 }

@@ -8,4 +8,6 @@ model Message {
 
   sender     User     @relation("sentMessages", fields: [senderId], references: [id])
   receiver   User     @relation("receivedMessages", fields: [receiverId], references: [id])
+
+  @@map("messages")
 }
