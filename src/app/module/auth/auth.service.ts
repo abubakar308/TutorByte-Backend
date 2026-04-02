@@ -20,7 +20,8 @@ const registerStudent = async (payload: IRegisterStudentPayload) => {
         body: {
             name,
             email,
-            password
+            password,
+            image: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
         }
     })
 
