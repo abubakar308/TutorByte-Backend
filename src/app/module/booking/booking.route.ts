@@ -101,14 +101,17 @@ router.post(
   bookingControllers.createReview
 );
 
+
 /**
  * GET /bookings/reviews/:tutorId
  * Public — anyone can view a tutor's reviews
  * Query: ?page=1  &limit=10
  */
 router.get(
-  "/reviews/:tutorId",
-  bookingControllers.getReviewsByTutor
+  "/my-reviews/",
+  checkAuth(UserRole.STUDENT),
+    validateRequest(bookingQuerySchema),
+  bookingControllers.getMyReviews
 );
 
 export const BookingRoute = router;

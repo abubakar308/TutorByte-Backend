@@ -7,12 +7,14 @@ import { SubjectRoutes } from "../module/subject/subject.route";
 import { LanguageRoutes } from "../module/language/language.route";
 import { AvailabilityRoutes } from "../module/availability/availability.route";
 import { PaymentRoutes } from "../module/payment/payment.route";
+import { UserRoutes } from "../module/student/student.route";
 
 
 const router = Router();
 
 router.use("/auth", AuthRoutes);
 router.use("/tutors", TutorRoutes);
+router.use("/users", UserRoutes); 
 router.use("/bookings", BookingRoute);
 router.use("/admin", AdminRoutes);
 router.use("/subject", SubjectRoutes);

@@ -127,19 +127,14 @@ const createReview = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getReviewsByTutor = catchAsync(async (req: Request, res: Response) => {
-  const tutorId = req.params.tutorId;
-
-  const result = await bookingService.getReviewsByTutor(tutorId as string, {
-    page: req.query.page ? Number(req.query.page) : 1,
-    limit: req.query.limit ? Number(req.query.limit) : 10,
-  });
-
+const getMyReviews = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const result = await bookingService.getMyReviews(user?.userId!);
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
-    message: "Reviews fetched successfully.",
-    data: result.reviews,
+    message: "My reviews fetched successfully",
+    data: result,
   });
 });
 
@@ -151,5 +146,5 @@ export const bookingControllers = {
   getMyBookingsAsTutor,
   getAllBookings,
   createReview,
-  getReviewsByTutor,
+  getMyReviews
 };

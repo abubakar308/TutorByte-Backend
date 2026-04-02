@@ -22,16 +22,6 @@ const getSubjectById = async (id: string) => {
   return result;
 };
 
-const updateSubject = async (id: string, payload: Partial<ISubject>) => {
-  const result = await prisma.subject.update({
-    where: {
-      id,
-    },
-    data: payload,
-  });
-  return result;
-};
-
 const deleteSubject = async (id: string) => {
   const result = await prisma.subject.delete({
     where: {
@@ -45,6 +35,5 @@ export const SubjectService = {
   createSubject,
   getAllSubjects,
   getSubjectById,
-  updateSubject,
   deleteSubject,
 };

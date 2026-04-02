@@ -12,16 +12,9 @@ router.get("/:id", SubjectController.getSubjectById);
 
 router.post(
   "/",
-  // checkAuth(UserRole.ADMIN),
-  // validateRequest(SubjectValidation.createSubjectValidationSchema),
-  SubjectController.createSubject
-);
-
-router.patch(
-  "/:id",
   checkAuth(UserRole.ADMIN),
-  validateRequest(SubjectValidation.updateSubjectValidationSchema),
-  SubjectController.updateSubject
+  validateRequest(SubjectValidation.createSubjectValidationSchema),
+  SubjectController.createSubject
 );
 
 router.delete(

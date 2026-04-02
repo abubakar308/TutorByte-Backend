@@ -77,32 +77,6 @@ const getPublicProfile = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  SEARCH
-// ─────────────────────────────────────────────────────────────
-
-const searchTutors = catchAsync(async (req: Request, res: Response) => {
-  const query = {
-    subject: req.query.subject as string | undefined,
-    language: req.query.language as string | undefined,
-    minPrice: req.query.minPrice ? Number(req.query.minPrice) : undefined,
-    maxPrice: req.query.maxPrice ? Number(req.query.maxPrice) : undefined,
-    minRating: req.query.minRating ? Number(req.query.minRating) : undefined,
-    search: req.query.search as string | undefined,
-    sortBy: req.query.sortBy as "rating" | "price_asc" | "price_desc" | "reviews" | undefined,
-    page: req.query.page ? Number(req.query.page) : 1,
-    limit: req.query.limit ? Number(req.query.limit) : 10,
-  };
-
-  const result = await TutorServices.searchTutors(query);
-
-  sendResponse(res, {
-    httpStatusCode: status.OK,
-    success: true,
-    message: "Tutors fetched successfully.",
-    data: result.tutors,
-  });
-});
 
 // ─────────────────────────────────────────────────────────────
 //  UPLOADS
@@ -138,7 +112,9 @@ const uploadAvatar = catchAsync(async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────────
 
 const getDashboardStats = catchAsync(async (req: Request, res: Response) => {
-  const result = await TutorServices.getDashboardStats(req.user as IRequestUser);
+
+  const user = req.user as IRequestUser;
+  const result = await TutorServices.getDashboardStats(user.userId);
 
   sendResponse(res, {
     httpStatusCode: status.OK,
@@ -158,7 +134,6 @@ export const TutorController = {
   getMyProfile,
   getAllTutors,
   getPublicProfile,
-  searchTutors,
   uploadAvatar,
   getDashboardStats,
 };

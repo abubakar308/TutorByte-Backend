@@ -6,7 +6,7 @@ import { prisma } from "../../lib/prisma";
 import AppError from "../../errorHelper/AppError";
 
 const stripe = new Stripe(envVars.STRIPE.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-04-10",
+  apiVersion: "2024-04-10" as any,
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -44,32 +44,54 @@ const initiateStripePayment = async (booking: any) => {
 };
 
 /** Stripe Webhook Handler - পেমেন্ট সফল হলে মিটিং লিঙ্ক জেনারেট করবে */
-const handleStripeSuccess = async (intent: Stripe.PaymentIntent) => {
-  const bookingId = intent.metadata?.bookingId;
-  if (!bookingId) return;
+const handleStripeWebhook = async (rawBody: Buffer, signature: string) => {
+  let event: Stripe.Event;
 
-  // অটোমেটিক মিটিং লিঙ্ক জেনারেট (Jitsi/Google Meet)
-  const meetingLink = `https://meet.jit.si/TutorByte-${bookingId}`;
+  try {
+    event = stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      envVars.STRIPE.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err: any) {
+    throw new AppError(status.BAD_REQUEST, `Webhook Error: ${err.message}`);
+  }
 
-  await prisma.$transaction([
-    prisma.payment.update({
-      where: { bookingId },
-      data: {
-        status: PaymentStatus.PAID,
-        transactionId: intent.id, // অটোমেটিক Stripe ID বসবে
-        paymentMethod: "STRIPE_CARD",
-      },
-    }),
-    prisma.booking.update({
-      where: { id: bookingId },
-      data: { 
-        status: BookingStatus.PAID,
-        meetingLink: meetingLink 
-      },
-    }),
-  ]);
+  // Handle successful payment
+  if (event.type === 'payment_intent.succeeded') {
+    const paymentIntent = event.data.object as Stripe.PaymentIntent;
+    const bookingId = paymentIntent.metadata?.bookingId;
+    
+    if (!bookingId) {
+      console.warn("Webhook: PaymentIntent missing bookingId in metadata", paymentIntent.id);
+      return { success: true, message: "No action taken (missing bookingId)" };
+    }
 
-  console.log(`✅ Stripe payment & Meeting Link auto-generated for: ${bookingId}`);
+    // অটোমেটিক মিটিং লিঙ্ক জেনারেট (Jitsi/Google Meet)
+    const meetingLink = `https://meet.jit.si/TutorByte-${bookingId}`;
+
+    await prisma.$transaction([
+      prisma.payment.update({
+        where: { bookingId },
+        data: {
+          status: PaymentStatus.PAID,
+          transactionId: paymentIntent.id, // অটোমেটিক Stripe ID বসবে
+          paymentMethod: "STRIPE_CARD",
+        },
+      }),
+      prisma.booking.update({
+        where: { id: bookingId },
+        data: { 
+          status: BookingStatus.ACCEPTED,
+          meetingLink: meetingLink 
+        },
+      }),
+    ]);
+
+    console.log(`✅ Stripe payment & Meeting Link auto-generated for: ${bookingId}`);
+  }
+
+  return { success: true, message: "Webhook processed" };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -103,9 +125,19 @@ const submitManualPayment = async (
   });
 };
 
-/** অ্যাডমিন ম্যানুয়াল পেমেন্ট চেক করে অ্যাপ্রুভ করবে */
-const approveManualPayment = async (bookingId: string) => {
+/** অ্যাডমিন বা টিউটর ম্যানুয়াল পেমেন্ট চেক করে অ্যাপ্রুভ করবে */
+const approveManualPayment = async (bookingId: string, userId: string, role: string) => {
   const meetingLink = `https://meet.jit.si/TutorByte-${bookingId}`;
+
+  if (role === "TUTOR") {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { tutor: true },
+    });
+    if (!booking || booking.tutor.userId !== userId) {
+      throw new AppError(status.FORBIDDEN, "You can only approve payments for your own bookings.");
+    }
+  }
 
   return await prisma.$transaction([
     prisma.payment.update({
@@ -115,7 +147,7 @@ const approveManualPayment = async (bookingId: string) => {
     prisma.booking.update({
       where: { id: bookingId },
       data: { 
-        status: BookingStatus.PAID,
+        status: BookingStatus.ACCEPTED,
         meetingLink: meetingLink 
       },
     }),
@@ -128,8 +160,7 @@ const approveManualPayment = async (bookingId: string) => {
 
 export const paymentService = {
   initiateStripePayment,
-  handleStripeSuccess,
+  handleStripeWebhook,
   submitManualPayment,
   approveManualPayment,
-  // Webhook Signature verification function here...
 };

@@ -12,8 +12,8 @@ router.get("/:id", LanguageController.getLanguageById);
 
 router.post(
   "/",
-  // checkAuth(UserRole.ADMIN),
-  // validateRequest(LanguageValidation.createLanguageValidationSchema),
+  checkAuth(UserRole.ADMIN),
+  validateRequest(LanguageValidation.createLanguageValidationSchema),
   LanguageController.createLanguage
 );
 

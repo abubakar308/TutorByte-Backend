@@ -15,7 +15,6 @@ const router = Router();
 
 router.post(
   "/webhook/stripe",
-  express.raw({ type: "application/json" }), 
   paymentController.stripeWebhook
 );
 
@@ -55,7 +54,7 @@ router.post(
  */
 router.patch(
   "/approve/:bookingId",
-  checkAuth(UserRole.ADMIN),
+  checkAuth(UserRole.ADMIN, UserRole.TUTOR),
   paymentController.approveManualPayment
 );
 

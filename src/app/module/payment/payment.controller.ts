@@ -60,7 +60,8 @@ const submitManualPayment = catchAsync(async (req: Request, res: Response) => {
 
 /** অ্যাডমিন যখন পেমেন্ট চেক করে অ্যাপ্রুভ করবে */
 const approveManualPayment = catchAsync(async (req: Request, res: Response) => {
-  const result = await paymentService.approveManualPayment(req.params.bookingId);
+  const user = req.user as IRequestUser;
+  const result = await paymentService.approveManualPayment(req.params.bookingId as string, user.userId, user.role);
 
   sendResponse(res, {
     httpStatusCode: status.OK,

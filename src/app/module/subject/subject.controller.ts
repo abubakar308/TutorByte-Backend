@@ -35,17 +35,6 @@ const getSubjectById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const updateSubject = catchAsync(async (req: Request, res: Response) => {
-  const id = req.params.id as string;
-  const result = await SubjectService.updateSubject(id, req.body);
-  sendResponse(res, {
-    httpStatusCode: httpStatus.OK,
-    success: true,
-    message: "Subject updated successfully",
-    data: result,
-  });
-});
-
 const deleteSubject = catchAsync(async (req: Request, res: Response) => {
   const id = req.params.id as string;
   const result = await SubjectService.deleteSubject(id);
@@ -61,6 +50,5 @@ export const SubjectController = {
   createSubject,
   getAllSubjects,
   getSubjectById,
-  updateSubject,
   deleteSubject,
 };

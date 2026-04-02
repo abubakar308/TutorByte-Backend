@@ -7,7 +7,13 @@ import { IndexRoutes } from './app/routes';
 
 const app: Application = express();
 
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/v1/payments/webhook/stripe') {
+    express.raw({ type: 'application/json' })(req, res, next);
+  } else {
+    express.json()(req, res, next);
+  }
+});
 app.use(cookieParser());
 
 app.use(

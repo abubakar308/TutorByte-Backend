@@ -170,10 +170,6 @@ const updateBookingStatus = async (
       );
     }
 
-    if (data.status === BookingStatus.ACCEPTED && !data.meetingLink && !booking.meetingLink) {
-  throw new AppError(status.BAD_REQUEST, "Please provide a meeting link to accept the booking.");
-}
-
     if (data.status && data.status !== BookingStatus.CANCELLED) {
       throw new AppError(
         status.FORBIDDEN,
@@ -189,11 +185,16 @@ const updateBookingStatus = async (
     }
   }
 
+  // Auto-generate meeting link if being accepted and none exists
+  if (data.status === BookingStatus.ACCEPTED && !data.meetingLink && !booking.meetingLink) {
+    data.meetingLink = `https://meet.jit.si/TutorByte-${booking.id}`;
+  }
+
   const updated = await prisma.booking.update({
     where: { id: bookingId },
     data: {
       ...(data.status && { status: data.status }),
-      // ...(data.meetingLink !== undefined && { meetingLink: data.meetingLink }),
+      ...(data.meetingLink && { meetingLink: data.meetingLink }),
     },
     include: {
       tutor: {
@@ -452,7 +453,7 @@ const createReview = async (studentId: string, data: IReviewCreate) => {
         studentId,
         tutorId: data.tutorId,
         rating: data.rating,
-        comment: data.comment,
+        comment: data.comment || "",
       },
       include: {
         student: { select: { id: true, name: true, image: true } },
@@ -480,52 +481,15 @@ const createReview = async (studentId: string, data: IReviewCreate) => {
   return review;
 };
 
-// ─────────────────────────────────────────────────────────────
-//  GET REVIEWS BY TUTOR
-// ─────────────────────────────────────────────────────────────
-
-const getReviewsByTutor = async (
-  tutorId: string,
-  query: { page?: number; limit?: number }
-) => {
-  const { skip, take } = getPagination(query.page, query.limit);
-
-  const tutor = await prisma.tutorProfile.findUnique({ where: { id: tutorId } });
-  if (!tutor) {
-    throw new AppError(status.NOT_FOUND, "Tutor not found.");
-  }
-
-  const [total, reviews] = await prisma.$transaction([
-    prisma.review.count({ where: { tutorId } }),
-    prisma.review.findMany({
-      where: { tutorId },
-      include: {
-        student: { select: { id: true, name: true, image: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take,
-    }),
-  ]);
-
-  return {
-    reviews,
-    summary: {
-      averageRating: tutor.averageRating,
-      totalReviews: tutor.totalReviews,
+const getMyReviews = async (studentId: string) => {
+  return await prisma.review.findMany({
+    where: { studentId },
+    include: {
+      tutor: { include: { user: { select: { name: true } } } },
     },
-    meta: {
-      total,
-      page: query.page ?? 1,
-      limit: take,
-      totalPages: Math.ceil(total / take),
-    },
-  };
+    orderBy: { createdAt: "desc" },
+  });
 };
-
-// ─────────────────────────────────────────────────────────────
-//  EXPORTS
-// ─────────────────────────────────────────────────────────────
 
 export const bookingService = {
   createBooking,
@@ -535,5 +499,5 @@ export const bookingService = {
   getAllBookings,
   getBookingById,
   createReview,
-  getReviewsByTutor,
+  getMyReviews
 };

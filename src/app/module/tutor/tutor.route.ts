@@ -8,22 +8,6 @@ import { validateRequest } from "../../middleware/validateRequest";
 
 const router = Router();
 
-// ── Public routes (no auth needed) ────────────────────────────
-
-/**
- * GET /tutors/search
- * Query: subject, language, minPrice, maxPrice, minRating,
- *        search, sortBy, page, limit
- */
-
-router.get(
-  "/search",
-  // validateRequest(TutorValidation.searchQuerySchema),
-  TutorController.searchTutors
-);
-
-
-
 /**
  * GET /tutors
  * Fetch all approved tutors

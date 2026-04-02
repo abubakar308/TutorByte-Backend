@@ -373,13 +373,22 @@ const getMyProfile = async (user: IRequestUser) => {
 //  TUTOR DASHBOARD STATS
 // ─────────────────────────────────────────────────────────────
 
-const getDashboardStats = async (user: IRequestUser) => {
-  const profile = await getMyProfile(user);
+const getDashboardStats = async (userId: string) => {
+  const tutor = await prisma.tutorProfile.findUnique({
+    where: { userId },
+  });
+
+  if (!tutor) {
+    throw new AppError(status.NOT_FOUND, "Tutor profile not found!");
+  }
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  // আপনার এরর অনুযায়ী startTime যদি String হয়, তবে ISO string ব্যবহার করতে হবে
+  const currentTimeString = now.toISOString();
 
   const [
     totalBookings,
@@ -387,40 +396,40 @@ const getDashboardStats = async (user: IRequestUser) => {
     pendingBookings,
     monthBookings,
     lastMonthBookings,
-    totalEarningsResult, 
-    monthEarningsResult, 
-    recentReviews,       
-    upcomingBookings,    
+    totalEarningsResult,
+    monthEarningsResult,
+    recentReviews,
+    upcomingBookings,
   ] = await prisma.$transaction([
-    // 1. Total bookings ever
-    prisma.booking.count({ where: { tutorId: profile.id } }),
+    // 1. Total bookings
+    prisma.booking.count({ where: { tutorId: tutor.id } }),
 
     // 2. Completed sessions
-    prisma.booking.count({ where: { tutorId: profile.id, status: "COMPLETED" } }),
+    prisma.booking.count({ where: { tutorId: tutor.id, status: "COMPLETED" } }),
 
     // 3. Pending approval
-    prisma.booking.count({ where: { tutorId: profile.id, status: "PENDING" } }),
+    prisma.booking.count({ where: { tutorId: tutor.id, status: "PENDING" } }),
 
     // 4. This month's bookings
     prisma.booking.count({
-      where: { tutorId: profile.id, createdAt: { gte: startOfMonth } },
+      where: { tutorId: tutor.id, createdAt: { gte: startOfMonth } },
     }),
 
     // 5. Last month's bookings
     prisma.booking.count({
-      where: { tutorId: profile.id, createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
+      where: { tutorId: tutor.id, createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
     }),
 
     // 6. Total earnings
     prisma.payment.aggregate({
-      where: { booking: { tutorId: profile.id }, status: "PAID" },
+      where: { booking: { tutorId: tutor.id }, status: "PAID" },
       _sum: { amount: true }
     }),
 
-    // 7. This month's earnings (তারিখ অ্যাড করা হয়েছে)
+    // 7. This month's earnings
     prisma.payment.aggregate({
       where: { 
-        booking: { tutorId: profile.id }, 
+        booking: { tutorId: tutor.id }, 
         status: "PAID",
         createdAt: { gte: startOfMonth }
       },
@@ -429,31 +438,33 @@ const getDashboardStats = async (user: IRequestUser) => {
 
     // 8. Latest 5 reviews
     prisma.review.findMany({
-      where: { tutorId: profile.id },
+      where: { tutorId: tutor.id },
       take: 5,
       orderBy: { createdAt: "desc" },
-      include: { student: { select: { id: true, name: true } } },
+      include: { student: { select: { id: true, name: true, image: true } } },
     }),
 
-    // 9. Next 5 upcoming accepted sessions (ভবিষ্যতের তারিখ চেক করা হয়েছে)
+    // 9. Upcoming sessions (Fixing the Type Error here)
     prisma.booking.findMany({
       where: {
-        tutorId: profile.id,
+        tutorId: tutor.id,
         status: "ACCEPTED",
-        startTime: { gte: now } // শুধুমাত্র বর্তমান সময়ের পরের সেশনগুলো
+        // যদি startTime ফিল্ডটি String হয়, তবে currentTimeString দিন। 
+        // যদি DateTime হয় তবে সরাসরি 'now' ব্যবহার করুন।
+        startTime: { gte: currentTimeString } 
       },
       take: 5,
-      orderBy: { startTime: "asc" }, // সবচেয়ে কাছের বুকিংগুলো আগে দেখাবে
+      orderBy: { startTime: "asc" },
       include: {
-        student: { select: { id: true, name: true } },
+        student: { select: { id: true, name: true, image: true } },
         payment: { select: { status: true, amount: true } },
       },
     }),
   ]);
 
-  // % Change calculation
+  // % Change calculation logic
   const bookingChange = lastMonthBookings === 0
-    ? monthBookings > 0 ? 100 : 0
+    ? (monthBookings > 0 ? 100 : 0)
     : Math.round(((monthBookings - lastMonthBookings) / lastMonthBookings) * 100);
 
   return {
@@ -463,9 +474,9 @@ const getDashboardStats = async (user: IRequestUser) => {
       pendingBookings,
       totalEarnings: totalEarningsResult._sum.amount || 0,
       monthEarnings: monthEarningsResult._sum.amount || 0,
-      averageRating: profile.averageRating,
-      totalReviews: profile.totalReviews,
-      isApproved: profile.isApproved,
+      averageRating: tutor.averageRating || 0,
+      totalReviews: tutor.totalReviews || 0,
+      isApproved: tutor.isApproved,
     },
     activity: {
       thisMonthBookings: monthBookings,
