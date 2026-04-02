@@ -154,6 +154,57 @@ const approveManualPayment = async (bookingId: string, userId: string, role: str
   ]);
 };
 
+
+const getPaymentHistoryFromDB = async (userId: string, role: string) => {
+  let whereCondition: any = {};
+
+  // রোল অনুযায়ী ফিল্টারিং কন্ডিশন
+  if (role === "STUDENT") {
+    whereCondition = {
+      booking: {
+        studentId: userId, // বুকিং টেবিল থেকে স্টুডেন্ট আইডি ম্যাচ করবে
+      },
+    };
+  } else if (role === "TUTOR") {
+    whereCondition = {
+      booking: {
+        tutorId: userId, // বুকিং টেবিল থেকে টিউটর আইডি ম্যাচ করবে
+      },
+      status: "PAID", // টিউটর সাধারণত শুধু সাকসেসফুল পেমেন্টগুলো দেখতে চায়
+    };
+  } else if (role === "ADMIN") {
+    whereCondition = {}; // অ্যাডমিন সব দেখতে পারবে
+  }
+
+  const result = await prisma.payment.findMany({
+    where: whereCondition,
+    include: {
+      booking: {
+        include: {
+          student: {
+            select: { name: true, email: true },
+          },
+       tutor: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return result;
+};
+
 // ─────────────────────────────────────────────────────────────
 //  EXPORTS
 // ─────────────────────────────────────────────────────────────
@@ -163,4 +214,5 @@ export const paymentService = {
   handleStripeWebhook,
   submitManualPayment,
   approveManualPayment,
+  getPaymentHistoryFromDB
 };

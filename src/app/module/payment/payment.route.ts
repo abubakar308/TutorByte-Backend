@@ -58,9 +58,16 @@ router.patch(
   paymentController.approveManualPayment
 );
 
+
 // ─────────────────────────────────────────────────────────────
 //  PAYMENT DETAILS & REFUND
 // ─────────────────────────────────────────────────────────────
+
+router.get(
+  "/history",
+  checkAuth(UserRole.STUDENT, UserRole.TUTOR, UserRole.ADMIN), 
+  paymentController.getPaymentHistory
+);
 
 /**
  * GET /payments/booking/:bookingId

@@ -3,37 +3,50 @@ import { UserRole, UserStatus } from "../../../generated/prisma/enums";
 import { auth } from "../../lib/auth";
 import status from "http-status";
 import AppError from "../../errorHelper/AppError";
+import { QueryHelper } from "../../builder/QueryBuilder";
 
 const getAllUsers = async (query: any) => {
-  const { role, status, searchTerm } = query;
-  
-  const where: any = {};
-  
-  if (role) {
-    where.role = role;
-  }
-  
-  if (status) {
-    where.status = status;
-  }
-  
-  if (searchTerm) {
-    where.OR = [
-      { name: { contains: searchTerm, mode: 'insensitive' } },
-      { email: { contains: searchTerm, mode: 'insensitive' } },
-    ];
-  }
+  // ১. সার্চেবল ফিল্ডগুলো ডিফাইন করুন
+  const searchableFields = ["name", "email"];
 
-  const result = await prisma.user.findMany({
-    where,
-    orderBy: {
-      createdAt: 'desc',
+  // ২. সার্চ লজিক অ্যাপ্লাই করুন
+  const searchConditions = QueryHelper.search(query.searchTerm, searchableFields);
+
+  // ৩. ফিল্টার লজিক (role, status ইত্যাদি)
+  const filterConditions = QueryHelper.filter(query);
+
+  // ৪. প্যাজিনেশন এবং সর্টিং লজিক
+  const { skip, take, page, limit, orderBy } = QueryHelper.paginateAndSort(query);
+
+  // ৫. সবগুলো কন্ডিশন একসাথে করা (Combine All)
+  const where = {
+    ...searchConditions,
+    ...filterConditions,
+  };
+
+  // ৬. ডাটাবেস কোয়েরি
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      skip,
+      take,
+      orderBy,
+      include: {
+        tutorProfile: true,
+      },
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    meta: {
+      page,
+      limit,
+      total,
+      totalPage: Math.ceil(total / limit),
     },
-    include: {
-      tutorProfile: true
-    }
-  });
-  return result;
+    data: users,
+  };
 };
 
 const updateUserStatus = async (userId: string, status: UserStatus, adminId: string) => {

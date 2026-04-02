@@ -45,7 +45,7 @@ Follow these steps to set up the backend locally:
 
 1. **Clone the repository** (if applicable):
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/abubakar308/TutorByte-Backend
    cd TutorByte-backend
    ```
 

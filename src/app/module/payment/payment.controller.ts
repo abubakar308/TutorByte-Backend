@@ -71,6 +71,26 @@ const approveManualPayment = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getPaymentHistory = async (req: Request, res: Response) => {
+  try {
+    // আপনার auth middleware থেকে user এবং role আসবে
+    const { userId, role } = req.user as any; 
+
+    const result = await paymentService.getPaymentHistoryFromDB(userId, role);
+
+    res.status(200).json({
+      success: true,
+      message: "Payment history fetched successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+
 // ─────────────────────────────────────────────────────────────
 //  OTHERS
 // ─────────────────────────────────────────────────────────────
@@ -107,5 +127,6 @@ export const paymentController = {
   initiatePayment,
   stripeWebhook,
   submitManualPayment,
-  approveManualPayment
+  approveManualPayment,
+  getPaymentHistory
 };
