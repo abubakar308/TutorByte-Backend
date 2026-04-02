@@ -16,10 +16,10 @@ export class QueryHelper {
   }
 
   // ২. Filter Logic: স্ট্যাটাস, ক্যাটাগরি বা অন্য ফিক্সড ভ্যালুর জন্য
-  static filter(query: Record<string, any>, excludeFields: string[] = ["searchTerm", "page", "limit", "sortBy", "sortOrder"]) {
+  static filter(query: Record<string, any>, excludeFields: string[] = ["search", "searchTerm", "page", "limit", "sortBy", "sortOrder"]) {
     const finalFilters: Record<string, any> = {};
     
-    // query থেকে সার্চ এবং প্যাগিনেশন বাদ দিয়ে বাকি সব ফিল্টার হিসেবে নিবে
+    // query থেকে সার্চ এবং প্যাগিনেশন বাদ দিয়ে বাকি সব ফিল্টার হিসেবে নিবে
     Object.keys(query).forEach((key) => {
       if (!excludeFields.includes(key) && query[key]) {
         finalFilters[key] = query[key];

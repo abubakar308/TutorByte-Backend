@@ -26,18 +26,6 @@ router.put(
   availabilityController.setAvailability
 );
 
-router.post(
-  "/slot",
-  checkAuth(UserRole.TUTOR),
-  validateRequest(AvailabilityValidation.addSlotSchema),
-  availabilityController.addSlot
-);
-
-router.patch(
-  "/slot/:slotId/toggle",          // more specific — must come before /slot/:slotId
-  checkAuth(UserRole.TUTOR),
-  availabilityController.toggleSlot
-);
 
 router.patch(
   "/slot/:slotId",

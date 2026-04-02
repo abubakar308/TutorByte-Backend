@@ -14,15 +14,25 @@ export interface IBookingUpdate {
   meetingLink?: string;
 }
 
-export interface IReviewCreate {
-  tutorId: string;
-  bookingId: string; // must reference a COMPLETED booking
-  rating: number;
-  comment: string;
-}
 
 export interface IBookingQuery {
   status?: BookingStatus;
   page?: number;
   limit?: number;
+}
+
+export interface IBookingQuery {
+  page?: number;
+  limit?: number;
+  status?: BookingStatus;
+  searchTerm?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface IReviewCreate {
+  bookingId: string;
+  tutorId: string;
+  rating: number;
+  comment?: string;
 }

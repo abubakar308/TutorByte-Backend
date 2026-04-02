@@ -6,9 +6,8 @@ import { availabilityService } from "./availability.service";
 import { IRequestUser } from "../auth/auth.interface";
 
 // ─────────────────────────────────────────────────────────────
-//  SET (full replace all slots)
+//  SET (সব স্লট একসাথে রিপ্লেস বা সেট করার জন্য)
 // ─────────────────────────────────────────────────────────────
-
 const setAvailability = catchAsync(async (req: Request, res: Response) => {
   const result = await availabilityService.setAvailability(
     req.user as IRequestUser,
@@ -24,27 +23,8 @@ const setAvailability = catchAsync(async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-//  ADD a single slot
+//  UPDATE (নির্দিষ্ট স্লট আপডেট বা অ্যাক্টিভ/ইনঅ্যাক্টিভ করার জন্য)
 // ─────────────────────────────────────────────────────────────
-
-const addSlot = catchAsync(async (req: Request, res: Response) => {
-  const result = await availabilityService.addSlot(
-    req.user as IRequestUser,
-    req.body
-  );
-
-  sendResponse(res, {
-    httpStatusCode: status.CREATED,
-    success: true,
-    message: "Availability slot added successfully.",
-    data: result,
-  });
-});
-
-// ─────────────────────────────────────────────────────────────
-//  UPDATE a single slot
-// ─────────────────────────────────────────────────────────────
-
 const updateSlot = catchAsync(async (req: Request, res: Response) => {
   const result = await availabilityService.updateSlot(
     req.user as IRequestUser,
@@ -61,9 +41,8 @@ const updateSlot = catchAsync(async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-//  DELETE a single slot
+//  DELETE (স্লট মুছে ফেলার জন্য)
 // ─────────────────────────────────────────────────────────────
-
 const deleteSlot = catchAsync(async (req: Request, res: Response) => {
   const result = await availabilityService.deleteSlot(
     req.user as IRequestUser,
@@ -79,27 +58,8 @@ const deleteSlot = catchAsync(async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-//  TOGGLE active/inactive
+//  GET MY AVAILABILITY (টিউটরের নিজের ড্যাশবোর্ডের জন্য)
 // ─────────────────────────────────────────────────────────────
-
-const toggleSlot = catchAsync(async (req: Request, res: Response) => {
-  const result = await availabilityService.toggleSlot(
-    req.user as IRequestUser,
-    req.params.slotId as string
-  );
-
-  sendResponse(res, {
-    httpStatusCode: status.OK,
-    success: true,
-    message: `Slot ${result.isActive ? "activated" : "deactivated"} successfully.`,
-    data: result,
-  });
-});
-
-// ─────────────────────────────────────────────────────────────
-//  GET MY availability (tutor — all slots)
-// ─────────────────────────────────────────────────────────────
-
 const getMyAvailability = catchAsync(async (req: Request, res: Response) => {
   const result = await availabilityService.getMyAvailability(
     req.user as IRequestUser
@@ -114,9 +74,8 @@ const getMyAvailability = catchAsync(async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-//  GET PUBLIC availability (student / anyone)
+//  GET PUBLIC AVAILABILITY (স্টুডেন্ট যখন টিউটরের প্রোফাইল দেখবে)
 // ─────────────────────────────────────────────────────────────
-
 const getPublicAvailability = catchAsync(async (req: Request, res: Response) => {
   const result = await availabilityService.getPublicAvailability(
     req.params.tutorId as string
@@ -131,9 +90,8 @@ const getPublicAvailability = catchAsync(async (req: Request, res: Response) => 
 });
 
 // ─────────────────────────────────────────────────────────────
-//  CHECK if a specific slot is free
+//  CHECK (বুকিং করার আগে নির্দিষ্ট সময় ফ্রি আছে কি না চেক)
 // ─────────────────────────────────────────────────────────────
-
 const checkAvailability = catchAsync(async (req: Request, res: Response) => {
   const result = await availabilityService.checkAvailability({
     tutorId: req.params.tutorId as string,
@@ -154,10 +112,8 @@ const checkAvailability = catchAsync(async (req: Request, res: Response) => {
 
 export const availabilityController = {
   setAvailability,
-  addSlot,
   updateSlot,
   deleteSlot,
-  toggleSlot,
   getMyAvailability,
   getPublicAvailability,
   checkAvailability,

@@ -7,126 +7,104 @@ import { IRequestUser } from "../auth/auth.interface";
 import { envVars } from "../../config/env";
 
 // ─────────────────────────────────────────────────────────────
-//  INITIATE  (Stripe or SSLCommerz)
+//  INITIATE STRIPE (Automatic)
 // ─────────────────────────────────────────────────────────────
-
 const initiatePayment = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as IRequestUser;
 
-  const result = await paymentService.initiatePayment(user.userId, req.body);
+  // এটি শুধু Stripe এর জন্য PaymentIntent তৈরি করবে
+  const result = await paymentService.initiateStripePayment(req.body);
 
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
-    message:
-      result.gateway === "STRIPE"
-        ? "Stripe PaymentIntent created. Use clientSecret on frontend."
-        : "SSLCommerz session created. Redirect user to gatewayUrl.",
+    message: "Stripe PaymentIntent created. Complete payment on frontend.",
     data: result,
   });
 });
 
 // ─────────────────────────────────────────────────────────────
-//  STRIPE WEBHOOK
-//  ⚠️  Must receive RAW body — configured in routes with express.raw()
+//  STRIPE WEBHOOK (Automatic Success Handler)
 // ─────────────────────────────────────────────────────────────
-
 const stripeWebhook = catchAsync(async (req: Request, res: Response) => {
   const signature = req.headers["stripe-signature"] as string;
 
   if (!signature) {
-    res.status(status.BAD_REQUEST).json({
-      success: false,
-      message: "Missing Stripe-Signature header.",
-    });
+    res.status(status.BAD_REQUEST).json({ success: false, message: "No signature." });
     return;
   }
 
-  // req.body is raw Buffer here (express.raw middleware on this route)
+  // Webhook পেমেন্ট সফল হলে অটোমেটিক মিটিং লিঙ্ক তৈরি করবে (Service-এ ডিফাইন করা)
   const result = await paymentService.handleStripeWebhook(req.body, signature);
 
-  // Stripe requires a 200 response quickly — do NOT use sendResponse wrapper
   res.status(status.OK).json(result);
 });
 
 // ─────────────────────────────────────────────────────────────
-//  SSLCOMMERZ CALLBACKS  (POST redirects from SSLCommerz gateway)
+//  MANUAL PAYMENT (bKash/Nagad/Rocket)
 // ─────────────────────────────────────────────────────────────
 
-const sslCommerzSuccess = catchAsync(async (req: Request, res: Response) => {
-  const result = await paymentService.handleSSLCommerzSuccess(req.body);
-
-  // Redirect to frontend success page
-  const redirectUrl = result.alreadyPaid
-    ? `${envVars.CLIENT_URL}/payment/success?bookingId=${result.bookingId}&already=true`
-    : `${envVars.CLIENT_URL}/payment/success?bookingId=${result.bookingId}`;
-
-  res.redirect(redirectUrl);
-});
-
-const sslCommerzFail = catchAsync(async (req: Request, res: Response) => {
-  const result = await paymentService.handleSSLCommerzFail(req.body);
-  res.redirect(
-    `${envVars.CLIENT_URL}/payment/failed?bookingId=${result.bookingId ?? ""}`
-  );
-});
-
-const sslCommerzCancel = catchAsync(async (req: Request, res: Response) => {
-  const result = await paymentService.handleSSLCommerzCancel(req.body);
-  res.redirect(
-    `${envVars.CLIENT_URL}/payment/cancelled?bookingId=${result.bookingId ?? ""}`
-  );
-});
-
-// IPN — server-to-server, no redirect
-const sslCommerzIPN = catchAsync(async (req: Request, res: Response) => {
-  await paymentService.handleSSLCommerzIPN(req.body);
-  res.status(status.OK).json({ received: true });
-});
-
-// ─────────────────────────────────────────────────────────────
-//  GET PAYMENT BY BOOKING
-// ─────────────────────────────────────────────────────────────
-
-const getPaymentByBooking = catchAsync(async (req: Request, res: Response) => {
+/** স্টুডেন্ট যখন ম্যানুয়ালি TxID সাবমিট করবে */
+const submitManualPayment = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as IRequestUser;
 
-  const result = await paymentService.getPaymentByBooking(
-    user.userId,
-    user.role,
-    req.params.bookingId
-  );
+  const result = await paymentService.submitManualPayment(user.userId, req.body);
 
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
-    message: "Payment fetched successfully.",
+    message: "Manual payment submitted. Waiting for admin approval.",
+    data: result,
+  });
+});
+
+/** অ্যাডমিন যখন পেমেন্ট চেক করে অ্যাপ্রুভ করবে */
+const approveManualPayment = catchAsync(async (req: Request, res: Response) => {
+  const result = await paymentService.approveManualPayment(req.params.bookingId);
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Payment approved and meeting link generated.",
     data: result,
   });
 });
 
 // ─────────────────────────────────────────────────────────────
-//  REFUND  (admin only)
+//  OTHERS
 // ─────────────────────────────────────────────────────────────
 
-const refundPayment = catchAsync(async (req: Request, res: Response) => {
-  const result = await paymentService.refundPayment(req.params.bookingId);
+// const getPaymentByBooking = catchAsync(async (req: Request, res: Response) => {
+//   const user = req.user as IRequestUser;
 
-  sendResponse(res, {
-    httpStatusCode: status.OK,
-    success: true,
-    message: result.message,
-    data: null,
-  });
-});
+//   const result = await paymentService.getPaymentByBooking(
+//     user.userId,
+//     user.role,
+//     req.params.bookingId
+//   );
+
+//   sendResponse(res, {
+//     httpStatusCode: status.OK,
+//     success: true,
+//     message: "Payment fetched successfully.",
+//     data: result,
+//   });
+// });
+
+// const refundPayment = catchAsync(async (req: Request, res: Response) => {
+//   const result = await paymentService.refundPayment(req.params.bookingId);
+
+//   sendResponse(res, {
+//     httpStatusCode: status.OK,
+//     success: true,
+//     message: result.message,
+//     data: null,
+//   });
+// });
 
 export const paymentController = {
   initiatePayment,
   stripeWebhook,
-  sslCommerzSuccess,
-  sslCommerzFail,
-  sslCommerzCancel,
-  sslCommerzIPN,
-  getPaymentByBooking,
-  refundPayment,
+  submitManualPayment,
+  approveManualPayment
 };

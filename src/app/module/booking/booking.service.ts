@@ -3,28 +3,11 @@ import { BookingStatus } from "../../../generated/prisma/enums";
 import { IBookingCreate, IBookingQuery, IBookingUpdate, IReviewCreate } from "./booking.interface";
 import { prisma } from "../../lib/prisma";
 import AppError from "../../errorHelper/AppError";
-import { availabilityService } from "../availability/availability.service";
 
 // ─────────────────────────────────────────────────────────────
 //  HELPERS
 // ─────────────────────────────────────────────────────────────
 
-/** Convert "HH:MM" to total minutes from midnight for easy comparison */
-const timeToMinutes = (time: string): number => {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-};
-
-/** Check if two time ranges overlap */
-const timesOverlap = (
-  aStart: string, aEnd: string,
-  bStart: string, bEnd: string
-): boolean => {
-  return (
-    timeToMinutes(aStart) < timeToMinutes(bEnd) &&
-    timeToMinutes(aEnd) > timeToMinutes(bStart)
-  );
-};
 
 const getPagination = (page = 1, limit = 10) => ({
   skip: (page - 1) * Math.min(limit, 50),
@@ -35,95 +18,94 @@ const getPagination = (page = 1, limit = 10) => ({
 //  CREATE BOOKING
 // ─────────────────────────────────────────────────────────────
 
-const createBooking = async (studentId: string, data: IBookingCreate) => {
-  const { tutorId, subjectId, bookingDate, startTime, endTime, totalPrice } = data;
+const createBooking = async (userId: string, data: IBookingCreate) => {
+  const { tutorId, subjectId, bookingDate, startTime, endTime } = data;
 
-  // 1. Tutor must exist and be approved
+  // ১. টিউটরের প্রোফাইল এবং তার Hourly Rate খুঁজে বের করা (প্রাইস ক্যালকুলেশনের জন্য)
   const tutor = await prisma.tutorProfile.findUnique({
     where: { id: tutorId },
-    include: { user: true },
+    select: { hourlyRate: true }
   });
 
   if (!tutor) {
-    throw new AppError(status.NOT_FOUND, "Tutor not found.");
+    throw new AppError(status.NOT_FOUND, "Tutor profile not found.");
   }
 
-  if (!tutor.isApproved) {
-    throw new AppError(
-      status.BAD_REQUEST,
-      "This tutor is not yet approved. Please choose another tutor."
-    );
-  }
+  // ২. দিন বের করা (UTC safe)
+  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const dayOfWeek = days[new Date(bookingDate).getUTCDay()];
 
-  // 2. Student cannot book themselves
-  if (tutor.userId === studentId) {
-    throw new AppError(status.BAD_REQUEST, "You cannot book yourself.");
-  }
-
-  // 3. Booking date must be in the future
-  const bookingDateObj = new Date(bookingDate);
-  if (bookingDateObj < new Date()) {
-    throw new AppError(status.BAD_REQUEST, "Booking date must be in the future.");
-  }
-
-  // 4. Check if the tutor is available during the requested time slot
-  const availability = await availabilityService.checkAvailability({
-    tutorId,
-    bookingDate,
-    startTime,
-    endTime,
+  // ৩. টিউটর ওই সাবজেক্ট পড়ান কি না চেক
+  const isTutorTeachingSubject = await prisma.tutorSubjects.findFirst({
+    where: { tutorId, subjectId },
   });
 
-  if (!availability.available) {
-    throw new AppError(status.CONFLICT, availability.reason || "Tutor is not available at this time.");
+  if (!isTutorTeachingSubject) {
+    throw new AppError(status.BAD_REQUEST, "This tutor does not teach the selected subject.");
   }
 
-  // 5. Check student doesn't already have an overlapping booking
-const tutorConflict = await prisma.booking.findFirst({
-  where: {
-    tutorId,
-    bookingDate: bookingDateObj,
-    status: { in: [BookingStatus.PENDING, BookingStatus.ACCEPTED] },
-  },
-});
+  // ৪. টিউটরের ওই দিনের অ্যাভেইল্যাবিলিটি চেক
+  const isAvailable = await prisma.availability.findFirst({
+    where: {
+      tutorId,
+      dayOfWeek: dayOfWeek as any,
+      isActive: true,
+      startTime: { lte: startTime },
+      endTime: { gte: endTime },
+    }
+  });
 
-if (
-  tutorConflict && 
-  timesOverlap(
-    startTime, 
-    endTime, 
-    new Date(tutorConflict.startTime).toISOString().substring(11, 16),
-    new Date(tutorConflict.endTime).toISOString().substring(11, 16)
-  )
-) {
-  throw new AppError(status.CONFLICT, "Tutor is already booked during this time slot.");
-}
+  if (!isAvailable) {
+    throw new AppError(status.BAD_REQUEST, `Tutor is not available on ${dayOfWeek} between ${startTime} - ${endTime}`);
+  }
 
-  // 6. Create the booking
-  const booking = await prisma.booking.create({
+  // ৫. কনফ্লিক্ট চেক (একই সময়ে অন্য বুকিং আছে কি না)
+  const existingBooking = await prisma.booking.findFirst({
+    where: {
+      tutorId,
+      bookingDate: new Date(bookingDate),
+      status: { in: ["PENDING", "ACCEPTED"] },
+      OR: [
+        { AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }] },
+        { AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }] }
+      ]
+    }
+  });
+
+  if (existingBooking) {
+    throw new AppError(status.CONFLICT, "Tutor already has a booking at this time.");
+  }
+
+  // ৬. প্রাইস ক্যালকুলেশন (সময় অনুযায়ী)
+  const start = startTime.split(':').map(Number);
+  const end = endTime.split(':').map(Number);
+  const durationInHours = (end[0] + end[1] / 60) - (start[0] + start[1] / 60);
+  
+  if (durationInHours <= 0) {
+    throw new AppError(status.BAD_REQUEST, "End time must be after start time.");
+  }
+
+  const hourlyRateNumber = Number(tutor.hourlyRate);
+
+  const totalPrice = hourlyRateNumber * durationInHours;
+
+  // ৭. বুকিং তৈরি করা (এখানেই userId কে studentId হিসেবে ব্যবহার করবেন)
+  const newBooking = await prisma.booking.create({
     data: {
-      studentId,
+      studentId: userId,
       tutorId,
       subjectId,
-      bookingDate: bookingDateObj,
+      bookingDate: new Date(bookingDate),
       startTime,
       endTime,
       totalPrice,
-      status: BookingStatus.PENDING,
-      meetingLink: null,
-    },
-    include: {
-      tutor: {
-        include: {
-          user: { select: { id: true, name: true, email: true, image: true } },
-        },
-      },
-      student: { select: { id: true, name: true, email: true, image: true } },
-    },
+      status: "PENDING"
+    }
   });
 
-  return booking;
+  return newBooking;
 };
+
 
 // ─────────────────────────────────────────────────────────────
 //  UPDATE BOOKING STATUS
@@ -165,6 +147,7 @@ const updateBookingStatus = async (
     const allowedTutorTransitions: Partial<Record<BookingStatus, BookingStatus[]>> = {
       [BookingStatus.PENDING]: [BookingStatus.ACCEPTED, BookingStatus.REJECTED],
       [BookingStatus.ACCEPTED]: [BookingStatus.COMPLETED],
+      [BookingStatus.REJECTED]: [BookingStatus.CANCELLED],
     };
 
     if (
@@ -225,6 +208,7 @@ const updateBookingStatus = async (
 
   return updated;
 };
+
 
 // ─────────────────────────────────────────────────────────────
 //  GET BOOKINGS — STUDENT
@@ -314,6 +298,68 @@ const getBookingsByTutor = async (
     meta: {
       total,
       page: query.page ?? 1,
+      limit: take,
+      totalPages: Math.ceil(total / take),
+    },
+  };
+};
+
+
+// ─────────────────────────────────────────────────────────────
+//  GET ALL BOOKINGS (ADMIN)
+// ─────────────────────────────────────────────────────────────
+
+const getAllBookings = async (query: Record<string, any>) => {
+  const { page, limit, sortBy, sortOrder, status, searchTerm } = query;
+  const { skip, take } = getPagination(page, limit);
+
+  // ১. ফিল্টারিং লজিক
+  const where: any = {};
+
+  if (status) {
+    where.status = status;
+  }
+
+  // ২. সার্চিং লজিক (স্টুডেন্ট বা টিউটরের নাম দিয়ে সার্চ)
+  if (searchTerm) {
+    where.OR = [
+      { student: { name: { contains: searchTerm, mode: "insensitive" } } },
+      { tutor: { user: { name: { contains: searchTerm, mode: "insensitive" } } } },
+    ];
+  }
+
+  // ৩. সর্টিং লজic
+  const orderBy: any = {};
+  if (sortBy && sortOrder) {
+    orderBy[sortBy] = sortOrder;
+  } else {
+    orderBy.createdAt = "desc";
+  }
+
+  const [total, bookings] = await prisma.$transaction([
+    prisma.booking.count({ where }),
+    prisma.booking.findMany({
+      where,
+      include: {
+        student: { select: { id: true, name: true, email: true, image: true } },
+        tutor: {
+          include: {
+            user: { select: { id: true, name: true, email: true, image: true } },
+          },
+        },
+        payment: true,
+      },
+      skip,
+      take,
+      orderBy,
+    }),
+  ]);
+
+  return {
+    bookings,
+    meta: {
+      total,
+      page: Number(page) || 1,
       limit: take,
       totalPages: Math.ceil(total / take),
     },
@@ -486,6 +532,7 @@ export const bookingService = {
   updateBookingStatus,
   getBookingsByStudent,
   getBookingsByTutor,
+  getAllBookings,
   getBookingById,
   createReview,
   getReviewsByTutor,

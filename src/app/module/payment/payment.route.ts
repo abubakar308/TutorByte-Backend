@@ -8,39 +8,24 @@ import { UserRole } from "../../../generated/prisma/enums";
 const router = Router();
 
 // ─────────────────────────────────────────────────────────────
-//  STRIPE WEBHOOK
-//  ⚠️  MUST be defined BEFORE express.json() is applied.
-//  Stripe requires the raw Buffer body to verify the signature.
-//  We apply express.raw() ONLY to this specific route.
+//  STRIPE WEBHOOK (Automatic)
+//  ⚠️ MUST be defined BEFORE express.json() in your main app file
+//  Verify signature and auto-generate meeting links
 // ─────────────────────────────────────────────────────────────
 
 router.post(
   "/webhook/stripe",
-  express.raw({ type: "application/json" }), // raw body — DO NOT put express.json() before this
+  express.raw({ type: "application/json" }), 
   paymentController.stripeWebhook
 );
 
 // ─────────────────────────────────────────────────────────────
-//  SSLCOMMERZ CALLBACKS
-//  These are POST redirects from the SSLCommerz gateway.
-//  No auth — SSLCommerz calls these directly.
-// ─────────────────────────────────────────────────────────────
-
-router.post("/sslcommerz/success", paymentController.sslCommerzSuccess);
-router.post("/sslcommerz/fail", paymentController.sslCommerzFail);
-router.post("/sslcommerz/cancel", paymentController.sslCommerzCancel);
-router.post("/sslcommerz/ipn", paymentController.sslCommerzIPN);
-
-// ─────────────────────────────────────────────────────────────
-//  INITIATE PAYMENT  (student triggers this after booking accepted)
+//  STRIPE INITIATE (Student Only)
 // ─────────────────────────────────────────────────────────────
 
 /**
  * POST /payments/initiate
- * Body: { bookingId: string, gateway: "STRIPE" | "SSLCOMMERZ" }
- *
- * STRIPE response:    { clientSecret, paymentIntentId, amount, currency }
- * SSLCOMMERZ response: { gatewayUrl, transactionId, amount, currency }
+ * স্টুডেন্ট কার্ড পেমেন্ট শুরু করার জন্য এটি ব্যবহার করবে
  */
 router.post(
   "/initiate",
@@ -50,31 +35,52 @@ router.post(
 );
 
 // ─────────────────────────────────────────────────────────────
-//  GET PAYMENT DETAILS
+//  MANUAL PAYMENT - bKash/Nagad (Student & Admin)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * POST /payments/submit-manual
+ * স্টুডেন্ট ম্যানুয়ালি টাকা পাঠানোর পর TxID সাবমিট করবে
+ */
+router.post(
+  "/submit-manual",
+  checkAuth(UserRole.STUDENT),
+  validateRequest(PaymentValidation.manualPaymentSchema), // Zod Schema থাকতে হবে
+  paymentController.submitManualPayment
+);
+
+/**
+ * PATCH /payments/approve/:bookingId
+ * অ্যাডমিন TxID ভেরিফাই করে পেমেন্ট অ্যাপ্রুভ করবে এবং লিঙ্ক জেনারেট হবে
+ */
+router.patch(
+  "/approve/:bookingId",
+  checkAuth(UserRole.ADMIN),
+  paymentController.approveManualPayment
+);
+
+// ─────────────────────────────────────────────────────────────
+//  PAYMENT DETAILS & REFUND
 // ─────────────────────────────────────────────────────────────
 
 /**
  * GET /payments/booking/:bookingId
- * Accessible by the student, tutor of that booking, or admin
+ * স্টুডেন্ট, টিউটর বা অ্যাডমিন পেমেন্ট ডিটেইলস দেখতে পারবে
  */
-router.get(
-  "/booking/:bookingId",
-  checkAuth(UserRole.STUDENT, UserRole.TUTOR, UserRole.ADMIN),
-  paymentController.getPaymentByBooking
-);
-
-// ─────────────────────────────────────────────────────────────
-//  REFUND  (admin only)
-// ─────────────────────────────────────────────────────────────
+// router.get(
+//   "/booking/:bookingId",
+//   checkAuth(UserRole.STUDENT, UserRole.TUTOR, UserRole.ADMIN),
+//   paymentController.getPaymentByBooking
+// );
 
 /**
  * POST /payments/booking/:bookingId/refund
- * Admin triggers a refund for a paid booking
+ * অ্যাডমিন পেমেন্ট রিফান্ড করতে পারবে
  */
-router.post(
-  "/booking/:bookingId/refund",
-  checkAuth(UserRole.ADMIN),
-  paymentController.refundPayment
-);
+// router.post(
+//   "/booking/:bookingId/refund",
+//   checkAuth(UserRole.ADMIN),
+//   paymentController.refundPayment
+// );
 
 export const PaymentRoutes = router;

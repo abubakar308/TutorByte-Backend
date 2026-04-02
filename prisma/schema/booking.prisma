@@ -4,8 +4,8 @@ model Booking {
   tutorId     String
   subjectId   String
   bookingDate DateTime
-  startTime   DateTime
-  endTime     DateTime
+  startTime   String
+  endTime     String
   status      BookingStatus @default(PENDING)
   totalPrice  Decimal       @db.Decimal(10, 2)
   meetingLink String?

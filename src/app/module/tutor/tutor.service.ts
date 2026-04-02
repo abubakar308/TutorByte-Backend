@@ -2,7 +2,6 @@ import status from "http-status";
 
 import {
   ICreateTutorProfile,
-  ITutorSearchQuery,
   IUpdateTutorProfile,
 } from "./tutor.interface";
 import { IRequestUser } from "../auth/auth.interface";
@@ -10,6 +9,7 @@ import AppError from "../../errorHelper/AppError";
 import { prisma } from "../../lib/prisma";
 import { deleteFromCloudinary, getPublicIdFromUrl, uploadToCloudinary } from "../../config/cloudinary.config";
 import { Prisma } from "../../../generated/prisma/client";
+import { QueryHelper } from "../../builder/QueryBuilder";
 
 
 
@@ -18,10 +18,10 @@ const createTutorProfile = async (
   payload: ICreateTutorProfile
 ) => {
   // Check if role is allowed
-  if (user.role !== "STUDENT" && user.role !== "TUTOR") {
+  if (user.role !== "STUDENT") {
     throw new AppError(
       status.FORBIDDEN,
-      "Only students or tutors can create a tutor profile."
+      "Only students can create a tutor profile."
     );
   }
 
@@ -101,7 +101,7 @@ const updateTutorProfile = async (
   user: IRequestUser,
   payload: IUpdateTutorProfile
 ) => {
-  const profile = await getOwnProfile(user.userId);
+  const profile = await getMyProfile(user);
 
   if (payload.hourlyRate !== undefined && payload.hourlyRate <= 0) {
     throw new AppError(status.BAD_REQUEST, "Hourly rate must be greater than 0.");
@@ -120,11 +120,8 @@ const updateTutorProfile = async (
     data: {
       ...(payload.bio !== undefined && { bio: payload.bio }),
       ...(payload.hourlyRate !== undefined && { hourlyRate: payload.hourlyRate }),
-      ...(payload.experienceYrs !== undefined && { experienceYears: payload.experienceYrs }),
-      ...(payload.education !== undefined && { education: payload.education }),
-      ...(payload.timezone !== undefined && { timezone: payload.timezone }),
-      ...(payload.introVideoUrl !== undefined && { introVideoUrl: payload.introVideoUrl }),
-
+      ...(payload.experienceYears !== undefined && { experienceYears: payload.experienceYears }),
+     
       // Relational updates for subjects
       ...(payload.subjects !== undefined && {
         subjects: {
@@ -151,8 +148,6 @@ const updateTutorProfile = async (
       },
     },
   });
-
-  // await syncSearchIndex(updated.id);
 
   return updated;
 };
@@ -189,9 +184,32 @@ const uploadAvatar = async (user: IRequestUser, fileBuffer: Buffer, mimetype: st
 //  GET ALL TUTORS
 // ─────────────────────────────────────────────────────────────
 
-const getAllTutors = async () => {
+const getAllTutors = async (query: Record<string, any>) => {
+
+  const searchTerm = query.search as string;
+
+  const searchConditions = searchTerm ? {
+    OR: [
+      { user: { name: { contains: query.search, mode: 'insensitive' as Prisma.QueryMode } } },
+      { bio: { contains: query.search, mode: 'insensitive' as Prisma.QueryMode } }
+    ]
+  } : {};
+
+  const filterConditions = QueryHelper.filter(query);
+
+  const { skip, take, page, limit, orderBy } = QueryHelper.paginateAndSort(query);
+
+  const where: Prisma.TutorProfileWhereInput = {
+    isApproved: true, 
+    ...searchConditions,
+    ...filterConditions,
+  };
+
   const tutors = await prisma.tutorProfile.findMany({
-    where: { isApproved: true },
+    where,
+    skip,
+    take,
+    orderBy,
     include: {
       user: {
         select: {
@@ -215,23 +233,30 @@ const getAllTutors = async () => {
         },
       },
       availabilities: {
-        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }, {endTime: "asc"}],
       },
       reviews: {
         take: 5,
         orderBy: { createdAt: "desc" },
         include: {
           student: {
-            select: { id: true, name: true },
+            select: { id: true, name: true, image: true },
           },
         },
       },
       _count: {
-        select: { reviews: true, bookings: true },
+        select: { reviews: true, bookings: true, subjects: true, languages: true },
       },
     },
   });
-  return tutors;
+  return {
+    tutors,
+    meta: {
+      page,
+      limit,
+      total: tutors.length,
+    },
+  };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -345,120 +370,11 @@ const getMyProfile = async (user: IRequestUser) => {
 
 
 // ─────────────────────────────────────────────────────────────
-//  SEARCH TUTORS  (the interview-winning feature)
-// ─────────────────────────────────────────────────────────────
-
-const searchTutors = async (query: ITutorSearchQuery) => {
-  const {
-    subject,
-    language,
-    minPrice,
-    maxPrice,
-    minRating,
-    search,
-    sortBy = "rating",
-    page = 1,
-    limit = 10,
-  } = query;
-
-  const skip = (page - 1) * limit;
-  const take = Math.min(limit, 50); // cap at 50 per page
-
-  // Build Prisma where clause dynamically
-  const where: Prisma.TutorProfileWhereInput = {
-    isApproved: true,
-    user: { status: "ACTIVE" },
-
-    // Subject filter
-    ...(subject && {
-      subjects: { some: { subject: { name: { contains: subject, mode: "insensitive" } } } },
-    }),
-
-    // Language filter
-    ...(language && {
-      languages: { some: { language: { name: { contains: language, mode: "insensitive" } } } },
-    }),
-
-    // Price range
-    ...(minPrice !== undefined || maxPrice !== undefined
-      ? {
-        hourlyRate: {
-          ...(minPrice !== undefined && { gte: minPrice }),
-          ...(maxPrice !== undefined && { lte: maxPrice }),
-        },
-      }
-      : {}),
-
-    // Minimum rating
-    ...(minRating !== undefined && {
-      averageRating: { gte: minRating },
-    }),
-
-    // Full-text search on bio and headline (PostgreSQL ILIKE)
-    ...(search && {
-      OR: [
-        { bio: { contains: search, mode: "insensitive" } },
-        { user: { name: { contains: search, mode: "insensitive" } } },
-      ],
-    }),
-  };
-
-  // Sort options
-  const orderBy: Prisma.TutorProfileOrderByWithRelationInput = (() => {
-    switch (sortBy) {
-      case "price_asc": return { hourlyRate: "asc" };
-      case "price_desc": return { hourlyRate: "desc" };
-      case "reviews": return { totalReviews: "desc" };
-      default: return { averageRating: "desc" };
-    }
-  })();
-
-  // Run count + data query in parallel
-  const [total, tutors] = await prisma.$transaction([
-    prisma.tutorProfile.count({ where }),
-    prisma.tutorProfile.findMany({
-      where,
-      orderBy,
-      skip,
-      take,
-      select: {
-        id: true,
-        bio: true,
-        hourlyRate: true,
-        subjects: true,
-        languages: true,
-        averageRating: true,
-        totalReviews: true,
-        experienceYears: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    }),
-  ]);
-
-  return {
-    tutors,
-    meta: {
-      total,
-      page,
-      limit: take,
-      totalPages: Math.ceil(total / take),
-      hasNextPage: skip + take < total,
-      hasPrevPage: page > 1,
-    },
-  };
-};
-
-// ─────────────────────────────────────────────────────────────
 //  TUTOR DASHBOARD STATS
 // ─────────────────────────────────────────────────────────────
 
 const getDashboardStats = async (user: IRequestUser) => {
-  const profile = await getOwnProfile(user.userId);
+  const profile = await getMyProfile(user);
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -471,72 +387,63 @@ const getDashboardStats = async (user: IRequestUser) => {
     pendingBookings,
     monthBookings,
     lastMonthBookings,
-    recentReviews,
-    upcomingBookings,
+    totalEarningsResult, 
+    monthEarningsResult, 
+    recentReviews,       
+    upcomingBookings,    
   ] = await prisma.$transaction([
-    // Total bookings ever
+    // 1. Total bookings ever
     prisma.booking.count({ where: { tutorId: profile.id } }),
 
-    // Completed sessions
+    // 2. Completed sessions
+    prisma.booking.count({ where: { tutorId: profile.id, status: "COMPLETED" } }),
+
+    // 3. Pending approval
+    prisma.booking.count({ where: { tutorId: profile.id, status: "PENDING" } }),
+
+    // 4. This month's bookings
     prisma.booking.count({
-      where: { tutorId: profile.id, status: "COMPLETED" },
+      where: { tutorId: profile.id, createdAt: { gte: startOfMonth } },
     }),
 
-    // Pending approval
+    // 5. Last month's bookings
     prisma.booking.count({
-      where: { tutorId: profile.id, status: "PENDING" },
+      where: { tutorId: profile.id, createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
     }),
 
-    // This month's bookings
-    prisma.booking.count({
-      where: {
-        tutorId: profile.id,
-        createdAt: { gte: startOfMonth },
-      },
-    }),
-
-    // Last month's bookings (for % change)
-    prisma.booking.count({
-      where: {
-        tutorId: profile.id,
-        createdAt: { gte: startOfLastMonth, lte: endOfLastMonth },
-      },
-    }),
-
-    // Total earnings (sum of tutorEarnings on PAID payments)
+    // 6. Total earnings
     prisma.payment.aggregate({
-      where: {
-        booking: { tutorId: profile.id },
-        status: "PAID",
-      }
+      where: { booking: { tutorId: profile.id }, status: "PAID" },
+      _sum: { amount: true }
     }),
 
-    // This month's earnings
+    // 7. This month's earnings (তারিখ অ্যাড করা হয়েছে)
     prisma.payment.aggregate({
-      where: {
-        booking: { tutorId: profile.id },
+      where: { 
+        booking: { tutorId: profile.id }, 
         status: "PAID",
-      }
+        createdAt: { gte: startOfMonth }
+      },
+      _sum: { amount: true }
     }),
 
-    // Latest 5 reviews
+    // 8. Latest 5 reviews
     prisma.review.findMany({
       where: { tutorId: profile.id },
       take: 5,
       orderBy: { createdAt: "desc" },
-      include: {
-        student: { select: { id: true, name: true } },
-      },
+      include: { student: { select: { id: true, name: true } } },
     }),
 
-    // Next 5 upcoming accepted sessions
+    // 9. Next 5 upcoming accepted sessions (ভবিষ্যতের তারিখ চেক করা হয়েছে)
     prisma.booking.findMany({
       where: {
         tutorId: profile.id,
         status: "ACCEPTED",
-
+        startTime: { gte: now } // শুধুমাত্র বর্তমান সময়ের পরের সেশনগুলো
       },
       take: 5,
+      orderBy: { startTime: "asc" }, // সবচেয়ে কাছের বুকিংগুলো আগে দেখাবে
       include: {
         student: { select: { id: true, name: true } },
         payment: { select: { status: true, amount: true } },
@@ -544,19 +451,18 @@ const getDashboardStats = async (user: IRequestUser) => {
     }),
   ]);
 
-  // Month-over-month booking change percentage
-  const bookingChange =
-    lastMonthBookings === 0
-      ? 100
-      : Math.round(
-        ((monthBookings - lastMonthBookings) / lastMonthBookings) * 100
-      );
+  // % Change calculation
+  const bookingChange = lastMonthBookings === 0
+    ? monthBookings > 0 ? 100 : 0
+    : Math.round(((monthBookings - lastMonthBookings) / lastMonthBookings) * 100);
 
   return {
     overview: {
       totalBookings,
       completedBookings,
       pendingBookings,
+      totalEarnings: totalEarningsResult._sum.amount || 0,
+      monthEarnings: monthEarningsResult._sum.amount || 0,
       averageRating: profile.averageRating,
       totalReviews: profile.totalReviews,
       isApproved: profile.isApproved,
@@ -571,76 +477,6 @@ const getDashboardStats = async (user: IRequestUser) => {
   };
 };
 
-// ─────────────────────────────────────────────────────────────
-//  PRIVATE HELPERS
-// ─────────────────────────────────────────────────────────────
-
-/** Load the tutor's own profile — throws 404 if not found */
-
-
-const getOwnProfile = async (userId: string) => {
-  const profile = await prisma.tutorProfile.findUnique({
-    where: { userId },
-  });
-
-  if (!profile) {
-    throw new AppError(
-      status.NOT_FOUND,
-      "Tutor profile not found. Please create your profile first."
-    );
-  }
-
-  return profile;
-};
-
-
-/** Sync the TutorSearchIndex denormalized table after profile changes */
-/*
-const syncSearchIndex = async (tutorProfileId: string) => {
-  const profile = await prisma.tutorProfile.findUnique({
-    where: { id: tutorProfileId },
-    include: { user: { select: { id: true } } },
-  });
-
-  if (!profile) return;
-
-  const searchVector = [
-    profile.bio,
-    profile.headline,
-    ...profile.subjects,
-    ...profile.languages,
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  await prisma.tutorSearchIndex.upsert({
-    where: { id: tutorProfileId },
-    create: {
-      id: tutorProfileId,
-      userId: profile.userId,
-      searchVector,
-      subjects: profile.subjects,
-      languages: profile.languages,
-      hourlyRate: profile.hourlyRate,
-      averageRating: profile.averageRating,
-      isApproved: profile.isApproved,
-    },
-    update: {
-      searchVector,
-      subjects: profile.subjects,
-      languages: profile.languages,
-      hourlyRate: profile.hourlyRate,
-      averageRating: profile.averageRating,
-      isApproved: profile.isApproved,
-    },
-  });
-};
-*/
-
-// ─────────────────────────────────────────────────────────────
-//  EXPORTS
-// ─────────────────────────────────────────────────────────────
-
 export const TutorServices = {
   createTutorProfile,
   updateTutorProfile,
@@ -648,6 +484,5 @@ export const TutorServices = {
   getMyProfile,
   getAllTutors,
   getPublicProfile,
-  searchTutors,
   getDashboardStats,
 }

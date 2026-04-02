@@ -1,32 +1,42 @@
-export type PaymentGateway = "STRIPE" | "SSLCOMMERZ";
+export type PaymentGateway = "STRIPE" | "BKASH" | "NAGAD" | "ROCKET";
 
+// ১. Stripe পেমেন্ট শুরু করার জন্য পেলোড
 export interface IInitiatePaymentPayload {
   bookingId: string;
-  gateway: PaymentGateway;
+  gateway: "STRIPE";
 }
 
+// ২. ম্যানুয়াল পেমেন্ট (bKash/Nagad) সাবমিট করার পেলোড
+export interface IManualPaymentPayload {
+  bookingId: string;
+  transactionId: string;
+  paymentMethod: "BKASH" | "NAGAD" | "ROCKET";
+}
+
+// ৩. Stripe Webhook এর জন্য ইন্টারফেস
 export interface IStripeWebhookPayload {
   id: string;
   type: string;
   data: {
     object: {
-      id: string;                    // PaymentIntent id
-      metadata: { bookingId: string };
-      amount: number;                // in cents
+      id: string; // PaymentIntent ID
+      metadata: { 
+        bookingId: string;
+        studentId?: string;
+      };
+      amount: number; // in cents
       status: string;
       payment_method_types: string[];
+      receipt_email?: string;
     };
   };
 }
 
-export interface ISSLCommerzSuccessPayload {
-  tran_id: string;          // our bookingId
-  val_id: string;
-  amount: string;
-  card_type: string;
-  store_amount: string;
-  bank_tran_id: string;
-  status: string;
-  currency: string;
-  [key: string]: string;   // SSLCommerz sends many extra fields
+// ৪. পেমেন্ট সাকসেস রেসপন্স (সার্ভিস থেকে যা রিটার্ন হবে)
+export interface IPaymentResponse {
+  gateway: string;
+  clientSecret?: string; // শুধু Stripe এর জন্য
+  transactionId?: string; // ম্যানুয়াল বা SSL এর জন্য (যদি পরে লাগে)
+  amount: number;
+  bookingId: string;
 }

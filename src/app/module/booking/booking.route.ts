@@ -33,7 +33,7 @@ router.post(
  * Query: ?status=PENDING|ACCEPTED|...  &page=1  &limit=10
  */
 router.get(
-  "/student/me",
+  "/student",
   checkAuth(UserRole.STUDENT),
   validateRequest(bookingQuerySchema),
   bookingControllers.getMyBookingsAsStudent
@@ -45,10 +45,17 @@ router.get(
  * Query: ?status=PENDING|ACCEPTED|...  &page=1  &limit=10
  */
 router.get(
-  "/tutor/me",
+  "/tutor",
   checkAuth(UserRole.TUTOR),
   validateRequest(bookingQuerySchema),
   bookingControllers.getMyBookingsAsTutor
+);
+
+router.get(
+  "/",
+   checkAuth(UserRole.ADMIN),
+    validateRequest(bookingQuerySchema),
+bookingControllers.getAllBookings
 );
 
 /**

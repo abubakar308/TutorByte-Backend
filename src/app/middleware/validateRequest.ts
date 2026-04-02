@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodObject } from "zod";
 
-export const validateRequest = (zodSchema: ZodObject<any>) => {
+export const validateRequest = (zodSchema: ZodObject) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedResult = await zodSchema.safeParseAsync({
@@ -15,18 +15,23 @@ export const validateRequest = (zodSchema: ZodObject<any>) => {
         return next(parsedResult.error);
       }
 
+      // ১. Body সরাসরি অ্যাসাইন করা যায়
       if (parsedResult.data.body) {
         req.body = parsedResult.data.body;
       }
 
+      // ২. Query অবজেক্টটি সরাসরি রিপ্লেস না করে Object.assign ব্যবহার করুন
+      // এতে 'Cannot set property query of #<IncomingMessage>' এরর আসবে না
       if (parsedResult.data.query) {
-        req.query = parsedResult.data.query as any;
+        Object.assign(req.query, parsedResult.data.query);
       }
 
+      // ৩. Params এর জন্যও Object.assign ব্যবহার করা নিরাপদ
       if (parsedResult.data.params) {
-        req.params = parsedResult.data.params as any;
+        Object.assign(req.params, parsedResult.data.params);
       }
 
+      // ৪. Cookies আপডেট করা
       if (parsedResult.data.cookies) {
         req.cookies = parsedResult.data.cookies;
       }

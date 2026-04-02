@@ -50,7 +50,8 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
 
 
 const getAllTutors = catchAsync(async (req: Request, res: Response) => {
-  const result = await TutorServices.getAllTutors();
+
+  const result = await TutorServices.getAllTutors(req.query);
 
   sendResponse(res, {
     httpStatusCode: status.OK,

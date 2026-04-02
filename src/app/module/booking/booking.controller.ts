@@ -95,6 +95,22 @@ const getMyBookingsAsTutor = catchAsync(async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// This route is for admin to get all bookings with optional filters and pagination
+// ─────────────────────────────────────────────────────────────
+
+const getAllBookings = catchAsync(async (req: Request, res: Response) => {
+  // শুধুমাত্র অ্যাডমিন এই রুটটি কল করতে পারবে
+  const result = await bookingService.getAllBookings(req.query);
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "All bookings retrieved successfully for admin",
+    data: result,
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
 //  REVIEW CONTROLLERS
 // ─────────────────────────────────────────────────────────────
 
@@ -133,6 +149,7 @@ export const bookingControllers = {
   getBookingById,
   getMyBookingsAsStudent,
   getMyBookingsAsTutor,
+  getAllBookings,
   createReview,
   getReviewsByTutor,
 };
