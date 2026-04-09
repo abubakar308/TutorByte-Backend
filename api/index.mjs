@@ -335,7 +335,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 
 // src/app/routes/index.ts
-import { Router as Router9 } from "express";
+import { Router as Router10 } from "express";
 
 // src/app/module/auth/auth.route.ts
 import { Router } from "express";
@@ -1617,11 +1617,11 @@ var getBookingsByTutor = async (tutorUserId, query) => {
   };
 };
 var getAllBookings = async (query) => {
-  const { page, limit, sortBy, sortOrder, status: status15, searchTerm } = query;
+  const { page, limit, sortBy, sortOrder, status: status17, searchTerm } = query;
   const { skip, take } = getPagination(page, limit);
   const where = {};
-  if (status15) {
-    where.status = status15;
+  if (status17) {
+    where.status = status17;
   }
   if (searchTerm) {
     where.OR = [
@@ -1687,83 +1687,13 @@ var getBookingById = async (requesterId, requesterRole, bookingId) => {
   }
   return booking;
 };
-var createReview = async (studentId, data) => {
-  const booking = await prisma.booking.findUnique({
-    where: { id: data.bookingId }
-  });
-  if (!booking) {
-    throw new AppError_default(status7.NOT_FOUND, "Booking not found.");
-  }
-  if (booking.studentId !== studentId) {
-    throw new AppError_default(
-      status7.FORBIDDEN,
-      "You can only review your own bookings."
-    );
-  }
-  if (booking.status !== BookingStatus.COMPLETED) {
-    throw new AppError_default(
-      status7.BAD_REQUEST,
-      "You can only review a completed session."
-    );
-  }
-  if (booking.tutorId !== data.tutorId) {
-    throw new AppError_default(status7.BAD_REQUEST, "Tutor ID does not match the booking.");
-  }
-  const existingReview = await prisma.review.findFirst({
-    where: { studentId, tutorId: data.tutorId }
-  });
-  if (existingReview) {
-    throw new AppError_default(
-      status7.CONFLICT,
-      "You have already reviewed this tutor for this booking."
-    );
-  }
-  const [review] = await prisma.$transaction(async (tx) => {
-    const newReview = await tx.review.create({
-      data: {
-        studentId,
-        tutorId: data.tutorId,
-        rating: data.rating,
-        comment: data.comment || ""
-      },
-      include: {
-        student: { select: { id: true, name: true, image: true } }
-      }
-    });
-    const aggregate = await tx.review.aggregate({
-      where: { tutorId: data.tutorId },
-      _avg: { rating: true },
-      _count: { rating: true }
-    });
-    await tx.tutorProfile.update({
-      where: { id: data.tutorId },
-      data: {
-        averageRating: aggregate._avg.rating ?? 0,
-        totalReviews: aggregate._count.rating
-      }
-    });
-    return [newReview];
-  });
-  return review;
-};
-var getMyReviews = async (studentId) => {
-  return await prisma.review.findMany({
-    where: { studentId },
-    include: {
-      tutor: { include: { user: { select: { name: true } } } }
-    },
-    orderBy: { createdAt: "desc" }
-  });
-};
 var bookingService = {
   createBooking,
   updateBookingStatus,
   getBookingsByStudent,
   getBookingsByTutor,
   getAllBookings,
-  getBookingById,
-  createReview,
-  getMyReviews
+  getBookingById
 };
 
 // src/app/module/booking/booking.controller.ts
@@ -1846,7 +1776,7 @@ var getAllBookings2 = catchAsync(async (req, res) => {
     data: result
   });
 });
-var createReview2 = catchAsync(async (req, res) => {
+var createReview = catchAsync(async (req, res) => {
   const user = req.user;
   const review = await bookingService.createReview(user.userId, req.body);
   sendResponse(res, {
@@ -1856,13 +1786,22 @@ var createReview2 = catchAsync(async (req, res) => {
     data: review
   });
 });
-var getMyReviews2 = catchAsync(async (req, res) => {
+var getMyReviews = catchAsync(async (req, res) => {
   const user = req.user;
   const result = await bookingService.getMyReviews(user?.userId);
   sendResponse(res, {
     httpStatusCode: status8.OK,
     success: true,
     message: "My reviews fetched successfully",
+    data: result
+  });
+});
+var getAllReviews = catchAsync(async (req, res) => {
+  const result = await bookingService.getAllReviews();
+  sendResponse(res, {
+    httpStatusCode: status8.OK,
+    success: true,
+    message: "All reviews fetched successfully",
     data: result
   });
 });
@@ -1873,8 +1812,9 @@ var bookingControllers = {
   getMyBookingsAsStudent,
   getMyBookingsAsTutor,
   getAllBookings: getAllBookings2,
-  createReview: createReview2,
-  getMyReviews: getMyReviews2
+  createReview,
+  getMyReviews,
+  getAllReviews
 };
 
 // src/app/module/booking/booking.validation.ts
@@ -1963,18 +1903,6 @@ router3.patch(
   validateRequest(updateBookingSchema),
   bookingControllers.updateBooking
 );
-router3.post(
-  "/reviews",
-  checkAuth(UserRole.STUDENT),
-  validateRequest(createReviewSchema),
-  bookingControllers.createReview
-);
-router3.get(
-  "/my-reviews/",
-  checkAuth(UserRole.STUDENT),
-  validateRequest(bookingQuerySchema),
-  bookingControllers.getMyReviews
-);
 var BookingRoute = router3;
 
 // src/app/module/admin/admin.route.ts
@@ -2016,20 +1944,20 @@ var getAllUsers = async (query) => {
     data: users
   };
 };
-var updateUserStatus = async (userId, status15, adminId) => {
+var updateUserStatus = async (userId, status17, adminId) => {
   const result = await prisma.$transaction(async (tx) => {
     const updatedUser = await tx.user.update({
       where: {
         id: userId
       },
       data: {
-        status: status15
+        status: status17
       }
     });
     await tx.adminLog.create({
       data: {
         adminId,
-        action: `Updated user status of ${userId} to ${status15}`
+        action: `Updated user status of ${userId} to ${status17}`
       }
     });
     return updatedUser;
@@ -2224,9 +2152,9 @@ var getAllUsers2 = catchAsync(async (req, res) => {
 });
 var updateUserStatus2 = catchAsync(async (req, res) => {
   const id = req.params.id;
-  const { status: status15 } = req.body;
+  const { status: status17 } = req.body;
   const adminId = req.user.userId;
-  const result = await AdminService.updateUserStatus(id, status15, adminId);
+  const result = await AdminService.updateUserStatus(id, status17, adminId);
   sendResponse(res, {
     httpStatusCode: httpStatus.OK,
     success: true,
@@ -3535,19 +3463,191 @@ router10.get(
 );
 var AIRoutes = router10;
 
-// src/app/routes/index.ts
+// src/app/module/review/reviews.route.ts
+import { Router as Router9 } from "express";
+
+// src/app/module/review/reviews.controller.ts
+import status16 from "http-status";
+
+// src/app/module/review/reviews.service.ts
+import status15 from "http-status";
+var createReview2 = async (studentId, data) => {
+  const booking = await prisma.booking.findUnique({
+    where: { id: data.bookingId }
+  });
+  if (!booking) {
+    throw new AppError_default(status15.NOT_FOUND, "Booking not found.");
+  }
+  if (booking.studentId !== studentId) {
+    throw new AppError_default(
+      status15.FORBIDDEN,
+      "You can only review your own bookings."
+    );
+  }
+  if (booking.status !== BookingStatus.COMPLETED) {
+    throw new AppError_default(
+      status15.BAD_REQUEST,
+      "You can only review a completed session."
+    );
+  }
+  if (booking.tutorId !== data.tutorId) {
+    throw new AppError_default(status15.BAD_REQUEST, "Tutor ID does not match the booking.");
+  }
+  const existingReview = await prisma.review.findFirst({
+    where: { studentId, tutorId: data.tutorId }
+  });
+  if (existingReview) {
+    throw new AppError_default(
+      status15.CONFLICT,
+      "You have already reviewed this tutor for this booking."
+    );
+  }
+  const [review] = await prisma.$transaction(async (tx) => {
+    const newReview = await tx.review.create({
+      data: {
+        studentId,
+        tutorId: data.tutorId,
+        rating: data.rating,
+        comment: data.comment || ""
+      },
+      include: {
+        student: { select: { id: true, name: true, image: true } }
+      }
+    });
+    const aggregate = await tx.review.aggregate({
+      where: { tutorId: data.tutorId },
+      _avg: { rating: true },
+      _count: { rating: true }
+    });
+    await tx.tutorProfile.update({
+      where: { id: data.tutorId },
+      data: {
+        averageRating: aggregate._avg.rating ?? 0,
+        totalReviews: aggregate._count.rating
+      }
+    });
+    return [newReview];
+  });
+  return review;
+};
+var getMyReviews2 = async (studentId) => {
+  return await prisma.review.findMany({
+    where: { studentId },
+    include: {
+      tutor: { include: { user: { select: { name: true } } } }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+};
+var getAllReviews2 = async () => {
+  const reviews = await prisma.review.findMany({
+    include: {
+      student: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true
+        }
+      },
+      tutor: {
+        select: {
+          id: true,
+          bio: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+  return reviews;
+};
+var reviewService = {
+  createReview: createReview2,
+  getMyReviews: getMyReviews2,
+  getAllReviews: getAllReviews2
+};
+
+// src/app/module/review/reviews.controller.ts
+var createReview3 = catchAsync(async (req, res) => {
+  const user = req.user;
+  const review = await reviewService.createReview(user.userId, req.body);
+  sendResponse(res, {
+    httpStatusCode: status16.CREATED,
+    success: true,
+    message: "Review submitted successfully.",
+    data: review
+  });
+});
+var getMyReviews3 = catchAsync(async (req, res) => {
+  const user = req.user;
+  const result = await reviewService.getMyReviews(user?.userId);
+  sendResponse(res, {
+    httpStatusCode: status16.OK,
+    success: true,
+    message: "My reviews fetched successfully",
+    data: result
+  });
+});
+var getAllReviews3 = catchAsync(async (req, res) => {
+  const result = await reviewService.getAllReviews();
+  sendResponse(res, {
+    httpStatusCode: status16.OK,
+    success: true,
+    message: "All reviews fetched successfully",
+    data: result
+  });
+});
+var reviewControllers = {
+  createReview: createReview3,
+  getMyReviews: getMyReviews3,
+  getAllReviews: getAllReviews3
+};
+
+// src/app/module/review/reviews.route.ts
 var router11 = Router9();
-router11.use("/auth", AuthRoutes);
-router11.use("/tutors", TutorRoutes);
-router11.use("/users", UserRoutes);
-router11.use("/bookings", BookingRoute);
-router11.use("/admin", AdminRoutes);
-router11.use("/subject", SubjectRoutes);
-router11.use("/language", LanguageRoutes);
-router11.use("/availability", AvailabilityRoutes);
-router11.use("/payments", PaymentRoutes);
-router11.use("/ai", AIRoutes);
-var IndexRoutes = router11;
+router11.post(
+  "/",
+  checkAuth(UserRole.STUDENT),
+  validateRequest(createReviewSchema),
+  reviewControllers.createReview
+);
+router11.get(
+  "/me",
+  checkAuth(UserRole.STUDENT),
+  validateRequest(bookingQuerySchema),
+  reviewControllers.getMyReviews
+);
+router11.get(
+  "/",
+  validateRequest(bookingQuerySchema),
+  reviewControllers.getAllReviews
+);
+var reviewRoutes = router11;
+
+// src/app/routes/index.ts
+var router12 = Router10();
+router12.use("/auth", AuthRoutes);
+router12.use("/tutors", TutorRoutes);
+router12.use("/users", UserRoutes);
+router12.use("/bookings", BookingRoute);
+router12.use("/reviews", reviewRoutes);
+router12.use("/admin", AdminRoutes);
+router12.use("/subject", SubjectRoutes);
+router12.use("/language", LanguageRoutes);
+router12.use("/availability", AvailabilityRoutes);
+router12.use("/payments", PaymentRoutes);
+router12.use("/ai", AIRoutes);
+var IndexRoutes = router12;
 
 // src/app.ts
 var app = express4();
