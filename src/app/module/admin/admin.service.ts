@@ -107,6 +107,11 @@ const getDashboardStats = async () => {
       averageRating: true,
     },
   });
+  const totalRevenue = await prisma.payment.aggregate({
+    _sum: {
+      amount: true,
+    },
+  });
   
   // You could also add revenue calculations here if Payment model is ready
   
@@ -116,6 +121,7 @@ const getDashboardStats = async () => {
     totalStudents,
     totalBookings,
     averageRating,
+    totalRevenue: totalRevenue._sum.amount || 0,
   };
 };
 

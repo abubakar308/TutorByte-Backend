@@ -3663,7 +3663,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://tutor-byte-backend.vercel.app"
+      "https://tutorbyte.vercel.app"
     ],
     credentials: true
   })
