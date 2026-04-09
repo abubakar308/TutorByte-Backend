@@ -42,3 +42,16 @@ export interface IRecommendedTutor {
 export interface IRecommendedTutorResponse {
   tutors: IRecommendedTutor[];
 }
+
+export interface IChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface IChatRequestBody {
+  messages: IChatMessage[];
+}
+
+export interface IChatResponse {
+  reply: string;
+}

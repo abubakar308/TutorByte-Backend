@@ -1,5 +1,8 @@
 import { prisma } from "../../lib/prisma";
+import OpenAI from "openai";
 import {
+  IChatMessage,
+    IChatResponse,
     IRecommendedTutor,
   ISearchSuggestionResponse,
 } from "./ai.interface";
@@ -94,7 +97,40 @@ const getRecommendedTutors = async (
 };
 
 
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const generateChatReply = async (
+  messages: IChatMessage[]
+): Promise<IChatResponse> => {
+  const latestUserMessage =
+    messages.filter((msg) => msg.role === "user").at(-1)?.content || "";
+
+  if (!latestUserMessage) {
+    throw new Error("User message is required");
+  }
+
+  const response = await client.responses.create({
+    model: "gpt-5.4",
+    instructions: `
+You are TutorByte AI Assistant.
+You help users with tutor booking, payments, becoming a tutor, dashboard help, and common FAQs.
+Keep answers concise, helpful, and practical.
+Do not invent unavailable data.
+    `,
+    input: latestUserMessage,
+  });
+
+  return {
+    reply: response.output_text || "Sorry, I could not generate a response.",
+  };
+};
+
+
+
 export const AIService = {
   getSearchSuggestions,
   getRecommendedTutors,
+  generateChatReply,
 };

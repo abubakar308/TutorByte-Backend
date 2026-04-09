@@ -110,44 +110,6 @@ const getAllBookings = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────
-//  REVIEW CONTROLLERS
-// ─────────────────────────────────────────────────────────────
-
-const createReview = catchAsync(async (req: Request, res: Response) => {
-  const user = req.user as IRequestUser;
-
-  const review = await bookingService.createReview(user.userId, req.body);
-
-  sendResponse(res, {
-    httpStatusCode: status.CREATED,
-    success: true,
-    message: "Review submitted successfully.",
-    data: review,
-  });
-});
-
-const getMyReviews = catchAsync(async (req: Request, res: Response) => {
-  const user = req.user;
-  const result = await bookingService.getMyReviews(user?.userId!);
-  sendResponse(res, {
-    httpStatusCode: status.OK,
-    success: true,
-    message: "My reviews fetched successfully",
-    data: result,
-  });
-});
-
-
-const getAllReviews = catchAsync(async (req: Request, res: Response) => {
-  const result = await bookingService.getAllReviews();
-  sendResponse(res, {
-    httpStatusCode: status.OK,
-    success: true,
-    message: "All reviews fetched successfully",
-    data: result,
-  });
-});
 
 
 export const bookingControllers = {
@@ -157,7 +119,4 @@ export const bookingControllers = {
   getMyBookingsAsStudent,
   getMyBookingsAsTutor,
   getAllBookings,
-  createReview,
-  getMyReviews,
-  getAllReviews
 };

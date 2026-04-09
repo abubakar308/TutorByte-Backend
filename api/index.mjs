@@ -1776,45 +1776,13 @@ var getAllBookings2 = catchAsync(async (req, res) => {
     data: result
   });
 });
-var createReview = catchAsync(async (req, res) => {
-  const user = req.user;
-  const review = await bookingService.createReview(user.userId, req.body);
-  sendResponse(res, {
-    httpStatusCode: status8.CREATED,
-    success: true,
-    message: "Review submitted successfully.",
-    data: review
-  });
-});
-var getMyReviews = catchAsync(async (req, res) => {
-  const user = req.user;
-  const result = await bookingService.getMyReviews(user?.userId);
-  sendResponse(res, {
-    httpStatusCode: status8.OK,
-    success: true,
-    message: "My reviews fetched successfully",
-    data: result
-  });
-});
-var getAllReviews = catchAsync(async (req, res) => {
-  const result = await bookingService.getAllReviews();
-  sendResponse(res, {
-    httpStatusCode: status8.OK,
-    success: true,
-    message: "All reviews fetched successfully",
-    data: result
-  });
-});
 var bookingControllers = {
   createBooking: createBooking2,
   updateBooking,
   getBookingById: getBookingById2,
   getMyBookingsAsStudent,
   getMyBookingsAsTutor,
-  getAllBookings: getAllBookings2,
-  createReview,
-  getMyReviews,
-  getAllReviews
+  getAllBookings: getAllBookings2
 };
 
 // src/app/module/booking/booking.validation.ts
@@ -1994,12 +1962,18 @@ var getDashboardStats3 = async () => {
       averageRating: true
     }
   });
+  const totalRevenue = await prisma.payment.aggregate({
+    _sum: {
+      amount: true
+    }
+  });
   return {
     totalUsers,
     totalTutors,
     totalStudents,
     totalBookings,
-    averageRating
+    averageRating,
+    totalRevenue: totalRevenue._sum.amount || 0
   };
 };
 var getAdminLogs = async () => {
@@ -3471,7 +3445,7 @@ import status16 from "http-status";
 
 // src/app/module/review/reviews.service.ts
 import status15 from "http-status";
-var createReview2 = async (studentId, data) => {
+var createReview = async (studentId, data) => {
   const booking = await prisma.booking.findUnique({
     where: { id: data.bookingId }
   });
@@ -3530,7 +3504,7 @@ var createReview2 = async (studentId, data) => {
   });
   return review;
 };
-var getMyReviews2 = async (studentId) => {
+var getMyReviews = async (studentId) => {
   return await prisma.review.findMany({
     where: { studentId },
     include: {
@@ -3539,7 +3513,7 @@ var getMyReviews2 = async (studentId) => {
     orderBy: { createdAt: "desc" }
   });
 };
-var getAllReviews2 = async () => {
+var getAllReviews = async () => {
   const reviews = await prisma.review.findMany({
     include: {
       student: {
@@ -3572,13 +3546,13 @@ var getAllReviews2 = async () => {
   return reviews;
 };
 var reviewService = {
-  createReview: createReview2,
-  getMyReviews: getMyReviews2,
-  getAllReviews: getAllReviews2
+  createReview,
+  getMyReviews,
+  getAllReviews
 };
 
 // src/app/module/review/reviews.controller.ts
-var createReview3 = catchAsync(async (req, res) => {
+var createReview2 = catchAsync(async (req, res) => {
   const user = req.user;
   const review = await reviewService.createReview(user.userId, req.body);
   sendResponse(res, {
@@ -3588,7 +3562,7 @@ var createReview3 = catchAsync(async (req, res) => {
     data: review
   });
 });
-var getMyReviews3 = catchAsync(async (req, res) => {
+var getMyReviews2 = catchAsync(async (req, res) => {
   const user = req.user;
   const result = await reviewService.getMyReviews(user?.userId);
   sendResponse(res, {
@@ -3598,7 +3572,7 @@ var getMyReviews3 = catchAsync(async (req, res) => {
     data: result
   });
 });
-var getAllReviews3 = catchAsync(async (req, res) => {
+var getAllReviews2 = catchAsync(async (req, res) => {
   const result = await reviewService.getAllReviews();
   sendResponse(res, {
     httpStatusCode: status16.OK,
@@ -3608,9 +3582,9 @@ var getAllReviews3 = catchAsync(async (req, res) => {
   });
 });
 var reviewControllers = {
-  createReview: createReview3,
-  getMyReviews: getMyReviews3,
-  getAllReviews: getAllReviews3
+  createReview: createReview2,
+  getMyReviews: getMyReviews2,
+  getAllReviews: getAllReviews2
 };
 
 // src/app/module/review/reviews.route.ts

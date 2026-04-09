@@ -1,5 +1,5 @@
 import express from "express";
-import { getSuggestions, getRecommendations } from "./ai.controller";
+import { getSuggestions, getRecommendations, generateChatReply } from "./ai.controller";
 import { checkAuth } from "../../middleware/checkAuth";
 import { UserRole } from "../../../generated/prisma/enums";
 import { validateRequest } from "../../middleware/validateRequest";
@@ -15,5 +15,8 @@ router.get("/recommendations",
     checkAuth(),
     // validateRequest(recommendationValidation),
     getRecommendations);
+
+    router.post("/chat/reply", checkAuth(), generateChatReply);
+
 
 export const AIRoutes = router;
