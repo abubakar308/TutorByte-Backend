@@ -5,7 +5,6 @@ import { validateRequest } from "../../middleware/validateRequest";
 import {
   bookingQuerySchema,
   createBookingSchema,
-  createReviewSchema,
   updateBookingSchema,
 } from "./booking.validation";
 import { UserRole } from "../../../generated/prisma/enums";
@@ -53,9 +52,9 @@ router.get(
 
 router.get(
   "/",
-   checkAuth(UserRole.ADMIN),
-    validateRequest(bookingQuerySchema),
-bookingControllers.getAllBookings
+  checkAuth(UserRole.ADMIN),
+  validateRequest(bookingQuerySchema),
+  bookingControllers.getAllBookings
 );
 
 /**
@@ -84,34 +83,6 @@ router.patch(
   bookingControllers.updateBooking
 );
 
-// ─────────────────────────────────────────────────────────────
-//  REVIEW ROUTES
-// ─────────────────────────────────────────────────────────────
 
-/**
- * POST /bookings/reviews
- * Student submits a review — only after session is COMPLETED
- * Body: { bookingId, rating, comment }
- * Note: tutorId is derived from the booking — no need to send it
- */
-router.post(
-  "/reviews",
-  checkAuth(UserRole.STUDENT),
-  validateRequest(createReviewSchema),
-  bookingControllers.createReview
-);
-
-
-/**
- * GET /bookings/reviews/:tutorId
- * Public — anyone can view a tutor's reviews
- * Query: ?page=1  &limit=10
- */
-router.get(
-  "/my-reviews/",
-  checkAuth(UserRole.STUDENT),
-    validateRequest(bookingQuerySchema),
-  bookingControllers.getMyReviews
-);
 
 export const BookingRoute = router;

@@ -1,5 +1,5 @@
 // src/app.ts
-import express3 from "express";
+import express4 from "express";
 import { toNodeHandler } from "better-auth/node";
 
 // src/app/lib/auth.ts
@@ -921,7 +921,7 @@ var uploadAvatar = async (user, fileBuffer, mimetype) => {
   return { avatarUrl: url };
 };
 var getAllTutors = async (query) => {
-  const searchTerm = query.search;
+  const searchTerm = query.searchTerm || query.search;
   const searchConditions = searchTerm ? {
     OR: [
       { user: { name: { contains: query.search, mode: "insensitive" } } },
@@ -935,6 +935,7 @@ var getAllTutors = async (query) => {
     ...searchConditions,
     ...filterConditions
   };
+  const total = await prisma.tutorProfile.count({ where });
   const tutors = await prisma.tutorProfile.findMany({
     where,
     skip,
@@ -984,7 +985,7 @@ var getAllTutors = async (query) => {
     meta: {
       page,
       limit,
-      total: tutors.length
+      total
     }
   };
 };
@@ -2060,11 +2061,17 @@ var getDashboardStats3 = async () => {
   const totalTutors = await prisma.user.count({ where: { role: UserRole.TUTOR } });
   const totalStudents = await prisma.user.count({ where: { role: UserRole.STUDENT } });
   const totalBookings = await prisma.booking.count();
+  const averageRating = await prisma.tutorProfile.aggregate({
+    _avg: {
+      averageRating: true
+    }
+  });
   return {
     totalUsers,
     totalTutors,
     totalStudents,
-    totalBookings
+    totalBookings,
+    averageRating
   };
 };
 var getAdminLogs = async () => {
@@ -2357,7 +2364,6 @@ var AdminValidation = {
 var router4 = Router4();
 router4.get(
   "/dashboard-stats",
-  checkAuth(UserRole.ADMIN),
   AdminController.getDashboardStats
 );
 router4.get(
@@ -3402,26 +3408,154 @@ router9.patch(
 );
 var UserRoutes = router9;
 
+// src/app/module/ai/ai.routes.ts
+import express3 from "express";
+
+// src/app/module/ai/ai.service.ts
+var getSearchSuggestions = async (query) => {
+  const search = query.trim().toLowerCase();
+  const subjects = await prisma.subject.findMany({
+    where: {
+      name: { contains: search, mode: "insensitive" }
+    },
+    select: {
+      id: true,
+      name: true
+    },
+    take: 5
+  });
+  const languages = await prisma.language.findMany({
+    where: {
+      name: { contains: search, mode: "insensitive" }
+    },
+    select: {
+      id: true,
+      name: true
+    },
+    take: 5
+  });
+  const tutors = await prisma.tutorProfile.findMany({
+    where: {
+      OR: [
+        { bio: { contains: search, mode: "insensitive" } },
+        {
+          user: {
+            name: { contains: search, mode: "insensitive" }
+          }
+        }
+      ]
+    },
+    select: {
+      id: true,
+      bio: true,
+      user: {
+        select: {
+          name: true
+        }
+      }
+    },
+    take: 5
+  });
+  return {
+    subjects,
+    languages,
+    tutors
+  };
+};
+var getRecommendedTutors = async (userId) => {
+  const userBookings = await prisma.booking.findMany({
+    where: { studentId: userId },
+    orderBy: { createdAt: "desc" },
+    take: 5
+  });
+  const subjectIds = userBookings.map((b) => b.subjectId);
+  const tutors = await prisma.tutorProfile.findMany({
+    where: {
+      subjects: {
+        some: {
+          subjectId: { in: subjectIds }
+        }
+      }
+    },
+    take: 6,
+    include: {
+      user: true,
+      subjects: true,
+      languages: true,
+      _count: true
+    }
+  });
+  return tutors;
+};
+var AIService = {
+  getSearchSuggestions,
+  getRecommendedTutors
+};
+
+// src/app/module/ai/ai.controller.ts
+var getSuggestions = catchAsync(async (req, res) => {
+  const query = req.query.query;
+  if (!query) {
+    return res.status(400).json({
+      success: false,
+      message: "Query is required"
+    });
+  }
+  const data = await AIService.getSearchSuggestions(query);
+  res.status(200).json({
+    success: true,
+    message: "Suggestions fetched successfully",
+    data
+  });
+});
+var getRecommendations = catchAsync(async (req, res) => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized"
+    });
+  }
+  const data = await AIService.getRecommendedTutors(userId);
+  res.status(200).json({
+    success: true,
+    message: "Recommended tutors fetched successfully",
+    data
+  });
+});
+
+// src/app/module/ai/ai.routes.ts
+var router10 = express3.Router();
+router10.get("/suggestions", getSuggestions);
+router10.get(
+  "/recommendations",
+  checkAuth(),
+  // validateRequest(recommendationValidation),
+  getRecommendations
+);
+var AIRoutes = router10;
+
 // src/app/routes/index.ts
-var router10 = Router9();
-router10.use("/auth", AuthRoutes);
-router10.use("/tutors", TutorRoutes);
-router10.use("/users", UserRoutes);
-router10.use("/bookings", BookingRoute);
-router10.use("/admin", AdminRoutes);
-router10.use("/subject", SubjectRoutes);
-router10.use("/language", LanguageRoutes);
-router10.use("/availability", AvailabilityRoutes);
-router10.use("/payments", PaymentRoutes);
-var IndexRoutes = router10;
+var router11 = Router9();
+router11.use("/auth", AuthRoutes);
+router11.use("/tutors", TutorRoutes);
+router11.use("/users", UserRoutes);
+router11.use("/bookings", BookingRoute);
+router11.use("/admin", AdminRoutes);
+router11.use("/subject", SubjectRoutes);
+router11.use("/language", LanguageRoutes);
+router11.use("/availability", AvailabilityRoutes);
+router11.use("/payments", PaymentRoutes);
+router11.use("/ai", AIRoutes);
+var IndexRoutes = router11;
 
 // src/app.ts
-var app = express3();
+var app = express4();
 app.use((req, res, next) => {
   if (req.originalUrl === "/api/v1/payments/webhook/stripe") {
-    express3.raw({ type: "application/json" })(req, res, next);
+    express4.raw({ type: "application/json" })(req, res, next);
   } else {
-    express3.json()(req, res, next);
+    express4.json()(req, res, next);
   }
 });
 app.use(cookieParser());

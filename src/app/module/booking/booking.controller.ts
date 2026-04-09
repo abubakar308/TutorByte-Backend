@@ -138,6 +138,18 @@ const getMyReviews = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+
+const getAllReviews = catchAsync(async (req: Request, res: Response) => {
+  const result = await bookingService.getAllReviews();
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "All reviews fetched successfully",
+    data: result,
+  });
+});
+
+
 export const bookingControllers = {
   createBooking,
   updateBooking,
@@ -146,5 +158,6 @@ export const bookingControllers = {
   getMyBookingsAsTutor,
   getAllBookings,
   createReview,
-  getMyReviews
+  getMyReviews,
+  getAllReviews
 };

@@ -9,6 +9,7 @@ import { AvailabilityRoutes } from "../module/availability/availability.route";
 import { PaymentRoutes } from "../module/payment/payment.route";
 import { UserRoutes } from "../module/student/student.route";
 import { AIRoutes } from "../module/ai/ai.routes";
+import { reviewRoutes } from "../module/review/reviews.route";
 
 
 const router = Router();
@@ -17,6 +18,7 @@ router.use("/auth", AuthRoutes);
 router.use("/tutors", TutorRoutes);
 router.use("/users", UserRoutes); 
 router.use("/bookings", BookingRoute);
+router.use("/reviews", reviewRoutes);
 router.use("/admin", AdminRoutes);
 router.use("/subject", SubjectRoutes);
 router.use("/language", LanguageRoutes);
