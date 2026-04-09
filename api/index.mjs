@@ -479,7 +479,8 @@ var registerStudent = async (payload) => {
     body: {
       name,
       email,
-      password
+      password,
+      image: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
     }
   });
   if (!data.user) {
@@ -1984,30 +1985,35 @@ import httpStatus from "http-status";
 // src/app/module/admin/admin.service.ts
 import status9 from "http-status";
 var getAllUsers = async (query) => {
-  const { role, status: status15, searchTerm } = query;
-  const where = {};
-  if (role) {
-    where.role = role;
-  }
-  if (status15) {
-    where.status = status15;
-  }
-  if (searchTerm) {
-    where.OR = [
-      { name: { contains: searchTerm, mode: "insensitive" } },
-      { email: { contains: searchTerm, mode: "insensitive" } }
-    ];
-  }
-  const result = await prisma.user.findMany({
-    where,
-    orderBy: {
-      createdAt: "desc"
+  const searchableFields = ["name", "email"];
+  const searchConditions = QueryHelper.search(query.searchTerm, searchableFields);
+  const filterConditions = QueryHelper.filter(query);
+  const { skip, take, page, limit, orderBy } = QueryHelper.paginateAndSort(query);
+  const where = {
+    ...searchConditions,
+    ...filterConditions
+  };
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      skip,
+      take,
+      orderBy,
+      include: {
+        tutorProfile: true
+      }
+    }),
+    prisma.user.count({ where })
+  ]);
+  return {
+    meta: {
+      page,
+      limit,
+      total,
+      totalPage: Math.ceil(total / limit)
     },
-    include: {
-      tutorProfile: true
-    }
-  });
-  return result;
+    data: users
+  };
 };
 var updateUserStatus = async (userId, status15, adminId) => {
   const result = await prisma.$transaction(async (tx) => {
@@ -3094,11 +3100,60 @@ var approveManualPayment = async (bookingId, userId, role) => {
     })
   ]);
 };
+var getPaymentHistoryFromDB = async (userId, role) => {
+  let whereCondition = {};
+  if (role === "STUDENT") {
+    whereCondition = {
+      booking: {
+        studentId: userId
+        // বুকিং টেবিল থেকে স্টুডেন্ট আইডি ম্যাচ করবে
+      }
+    };
+  } else if (role === "TUTOR") {
+    whereCondition = {
+      booking: {
+        tutorId: userId
+        // বুকিং টেবিল থেকে টিউটর আইডি ম্যাচ করবে
+      },
+      status: "PAID"
+      // টিউটর সাধারণত শুধু সাকসেসফুল পেমেন্টগুলো দেখতে চায়
+    };
+  } else if (role === "ADMIN") {
+    whereCondition = {};
+  }
+  const result = await prisma.payment.findMany({
+    where: whereCondition,
+    include: {
+      booking: {
+        include: {
+          student: {
+            select: { name: true, email: true }
+          },
+          tutor: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+  return result;
+};
 var paymentService = {
   initiateStripePayment,
   handleStripeWebhook,
   submitManualPayment,
-  approveManualPayment
+  approveManualPayment,
+  getPaymentHistoryFromDB
 };
 
 // src/app/module/payment/payment.controller.ts
@@ -3141,11 +3196,28 @@ var approveManualPayment2 = catchAsync(async (req, res) => {
     data: result
   });
 });
+var getPaymentHistory = async (req, res) => {
+  try {
+    const { userId, role } = req.user;
+    const result = await paymentService.getPaymentHistoryFromDB(userId, role);
+    res.status(200).json({
+      success: true,
+      message: "Payment history fetched successfully",
+      data: result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong"
+    });
+  }
+};
 var paymentController = {
   initiatePayment,
   stripeWebhook,
   submitManualPayment: submitManualPayment2,
-  approveManualPayment: approveManualPayment2
+  approveManualPayment: approveManualPayment2,
+  getPaymentHistory
 };
 
 // src/app/module/payment/payment.validation.ts
@@ -3201,6 +3273,11 @@ router8.patch(
   "/approve/:bookingId",
   checkAuth(UserRole.ADMIN, UserRole.TUTOR),
   paymentController.approveManualPayment
+);
+router8.get(
+  "/history",
+  checkAuth(UserRole.STUDENT, UserRole.TUTOR, UserRole.ADMIN),
+  paymentController.getPaymentHistory
 );
 var PaymentRoutes = router8;
 

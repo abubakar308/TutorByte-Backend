@@ -10,7 +10,6 @@ const router = Router();
 // Dashboard
 router.get(
   "/dashboard-stats",
-  checkAuth(UserRole.ADMIN),
   AdminController.getDashboardStats
 );
 

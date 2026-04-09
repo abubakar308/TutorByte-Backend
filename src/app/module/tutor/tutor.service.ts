@@ -186,7 +186,7 @@ const uploadAvatar = async (user: IRequestUser, fileBuffer: Buffer, mimetype: st
 
 const getAllTutors = async (query: Record<string, any>) => {
 
-  const searchTerm = query.search as string;
+ const searchTerm = (query.searchTerm || query.search) as string;
 
   const searchConditions = searchTerm ? {
     OR: [
@@ -204,6 +204,8 @@ const getAllTutors = async (query: Record<string, any>) => {
     ...searchConditions,
     ...filterConditions,
   };
+
+const total = await prisma.tutorProfile.count({ where });
 
   const tutors = await prisma.tutorProfile.findMany({
     where,
@@ -254,7 +256,7 @@ const getAllTutors = async (query: Record<string, any>) => {
     meta: {
       page,
       limit,
-      total: tutors.length,
+      total
     },
   };
 };

@@ -8,6 +8,7 @@ import { LanguageRoutes } from "../module/language/language.route";
 import { AvailabilityRoutes } from "../module/availability/availability.route";
 import { PaymentRoutes } from "../module/payment/payment.route";
 import { UserRoutes } from "../module/student/student.route";
+import { AIRoutes } from "../module/ai/ai.routes";
 
 
 const router = Router();
@@ -21,5 +22,6 @@ router.use("/subject", SubjectRoutes);
 router.use("/language", LanguageRoutes);
 router.use("/availability", AvailabilityRoutes);
 router.use("/payments", PaymentRoutes);
+router.use("/ai", AIRoutes);
 
 export const IndexRoutes = router;

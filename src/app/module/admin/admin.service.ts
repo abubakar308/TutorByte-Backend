@@ -102,6 +102,11 @@ const getDashboardStats = async () => {
   const totalTutors = await prisma.user.count({ where: { role: UserRole.TUTOR } });
   const totalStudents = await prisma.user.count({ where: { role: UserRole.STUDENT } });
   const totalBookings = await prisma.booking.count();
+  const averageRating = await prisma.tutorProfile.aggregate({
+    _avg: {
+      averageRating: true,
+    },
+  });
   
   // You could also add revenue calculations here if Payment model is ready
   
@@ -110,6 +115,7 @@ const getDashboardStats = async () => {
     totalTutors,
     totalStudents,
     totalBookings,
+    averageRating,
   };
 };
 
