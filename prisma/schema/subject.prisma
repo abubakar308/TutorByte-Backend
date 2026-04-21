@@ -1,9 +1,9 @@
 model Subject {
-  id     String          @id @default(uuid())
-  name   String    @unique
-  category  SubjectCategory
-
-  tutors TutorSubjects[]
+  id       String          @id @default(uuid())
+  name     String          @unique
+  category SubjectCategory
+  image    String?
+  tutors   TutorSubjects[]
   bookings Booking[]
 
   @@map("subjects")

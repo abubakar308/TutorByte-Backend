@@ -1,13 +1,12 @@
 model Review {
-  id        String   @id @default(uuid())
+  id        String       @id @default(uuid())
   studentId String
   tutorId   String
-  rating    Int    
+  rating    Int
   comment   String
-  createdAt DateTime @default(now())
-
-  student User         @relation("studentReviews", fields: [studentId], references: [id])
-  tutor   TutorProfile @relation(fields: [tutorId], references: [id])
+  createdAt DateTime     @default(now())
+  student   User         @relation("studentReviews", fields: [studentId], references: [id])
+  tutor     TutorProfile @relation(fields: [tutorId], references: [id])
 
   @@map("reviews")
 }

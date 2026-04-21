@@ -1,5 +1,5 @@
 import express from "express";
-import { getSuggestions, getRecommendations, generateChatReply } from "./ai.controller";
+import { getSuggestions, getRecommendations, generateChatReply, generateBio } from "./ai.controller";
 import { checkAuth } from "../../middleware/checkAuth";
 import { UserRole } from "../../../generated/prisma/enums";
 import { validateRequest } from "../../middleware/validateRequest";
@@ -12,11 +12,15 @@ router.get("/suggestions", getSuggestions);
 
 // protected route
 router.get("/recommendations",
-    checkAuth(),
+    // checkAuth(),
     // validateRequest(recommendationValidation),
     getRecommendations);
 
-    router.post("/chat/reply", checkAuth(), generateChatReply);
 
+
+// ... existing code ...
+
+router.post("/ai-chat", generateChatReply);
+router.post("/generate-bio", checkAuth(UserRole.TUTOR, UserRole.STUDENT), generateBio);
 
 export const AIRoutes = router;

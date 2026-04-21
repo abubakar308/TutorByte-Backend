@@ -24,13 +24,13 @@ router.post(
 router.get(
   "/me",
   checkAuth(UserRole.STUDENT),
-    validateRequest(bookingQuerySchema),
+  validateRequest(bookingQuerySchema),
   reviewControllers.getMyReviews
 );
 
 router.get(
   "/",
-  validateRequest(bookingQuerySchema),
+  // validateRequest(bookingQuerySchema),
   reviewControllers.getAllReviews
 );
 

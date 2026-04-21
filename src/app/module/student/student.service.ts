@@ -1,5 +1,6 @@
-import { PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
+import { IRequestUser } from "../auth/auth.interface";
+import { deleteFromCloudinary, getPublicIdFromUrl, uploadToCloudinary } from "../../config/cloudinary.config";
 
 
 const getStudentDashboardStatsFromDB = async (userId: string) => {
@@ -68,7 +69,32 @@ const updateProfileInDB = async (userId: string, payload: any) => {
   });
 };
 
+const uploadAvatar = async (user: IRequestUser, fileBuffer: Buffer, mimetype: string) => {
+  const dbUser = await prisma.user.findUnique({ where: { id: user.userId } });
+  if (!dbUser) throw new Error("User not found.");
+
+  // Delete old avatar from Cloudinary if it exists
+  if (dbUser.image) {
+    const publicId = getPublicIdFromUrl(dbUser.image);
+    if (publicId) {
+      await deleteFromCloudinary(publicId, "image").catch(() => null);
+    }
+  }
+
+  const { url } = await uploadToCloudinary(fileBuffer, "tutorbyte/avatars", {
+    transformation: [{ width: 400, height: 400, crop: "fill", gravity: "face" }],
+    format: "webp",
+  });
+
+  return await prisma.user.update({
+    where: { id: user.userId },
+    data: { image: url },
+    select: { id: true, name: true, image: true, email: true }
+  });
+};
+
 export const UserService = {
   getStudentDashboardStatsFromDB,
   updateProfileInDB,
-};
+  uploadAvatar,
+};

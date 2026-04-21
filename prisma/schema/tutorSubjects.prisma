@@ -2,7 +2,8 @@ model TutorSubjects {
   id        String       @id @default(uuid())
   tutorId   String
   subjectId String
-
-  tutor     TutorProfile @relation(fields: [tutorId], references: [id])
   subject   Subject      @relation(fields: [subjectId], references: [id])
+  tutor     TutorProfile @relation(fields: [tutorId], references: [id])
+
+  @@map("tutor_subjects")
 }

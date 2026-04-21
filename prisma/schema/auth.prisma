@@ -1,28 +1,26 @@
 model User {
-  id                 String     @id @default(uuid())
-  name               String     @db.VarChar(255)
-  email              String     @unique
-  emailVerified      Boolean    @default(false)
+  id                 String         @id @default(uuid())
+  name               String         @db.VarChar(255)
+  email              String         @unique
+  emailVerified      Boolean        @default(false)
   image              String?
-  role               UserRole   @default(STUDENT)
-  needPasswordChange Boolean    @default(false)
-  isDeleted          Boolean    @default(false)
+  role               UserRole       @default(STUDENT)
+  isVerified         Boolean        @default(false)
+  status             UserStatus     @default(ACTIVE)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  needPasswordChange Boolean        @default(false)
   deletedAt          DateTime?
-  isVerified         Boolean    @default(false)
-  status             UserStatus @default(ACTIVE)
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-
-  sessions Session[]
-  accounts Account[]
-
-  tutorProfile     TutorProfile?
-  reviews          Review[]       @relation("studentReviews")
-  bookings         Booking[]      @relation("studentBookings")
-  sentMessages     Message[]      @relation("sentMessages")
-  receivedMessages Message[]      @relation("receivedMessages")
-  notifications    Notification[]
-  adminLogs        AdminLog[]     @relation("adminLogs")
+  isDeleted          Boolean        @default(false)
+  adminLogs          AdminLog[]     @relation("adminLogs")
+  accounts           Account[]
+  bookings           Booking[]      @relation("studentBookings")
+  receivedMessages   Message[]      @relation("receivedMessages")
+  sentMessages       Message[]      @relation("sentMessages")
+  notifications      Notification[]
+  reviews            Review[]       @relation("studentReviews")
+  sessions           Session[]
+  tutorProfile       TutorProfile?
 
   @@map("user")
 }
@@ -30,7 +28,7 @@ model User {
 model Session {
   id        String   @id @default(uuid())
   expiresAt DateTime
-  token     String
+  token     String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   ipAddress String?
@@ -38,7 +36,6 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([token])
   @@index([userId])
   @@map("session")
 }
@@ -48,7 +45,6 @@ model Account {
   accountId             String
   providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -58,6 +54,7 @@ model Account {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("account")

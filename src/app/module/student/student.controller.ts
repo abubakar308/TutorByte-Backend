@@ -29,9 +29,31 @@ const updateProfile = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-  
+const uploadAvatar = catchAsync(async (req: Request, res: Response) => {
+  if (!req.file) {
+    res.status(status.BAD_REQUEST).json({
+      success: false,
+      message: "No file uploaded. Field name must be 'avatar'.",
+    });
+    return;
+  }
+
+  const result = await UserService.uploadAvatar(
+    req.user as any,
+    req.file.buffer,
+    req.file.mimetype
+  );
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Avatar uploaded successfully.",
+    data: result,
+  });
+});
 
 export const UserController = {
   getStudentStats,
   updateProfile,
+  uploadAvatar,
 };

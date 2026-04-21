@@ -1,20 +1,19 @@
 model TutorProfile {
-  id              String   @id @default(uuid())
-  userId          String   @unique
+  id              String           @id @default(uuid())
+  userId          String           @unique
   bio             String?
   experienceYears Int?
-  hourlyRate      Decimal  @db.Decimal(8, 2)
-  averageRating   Float?   @default(0.0)
+  hourlyRate      Decimal          @db.Decimal(8, 2)
+  averageRating   Float?           @default(0.0)
   totalReviews    Int
   isApproved      Boolean
-  createdAt       DateTime @default(now())
-
-  user           User             @relation(fields: [userId], references: [id])
-  subjects       TutorSubjects[]
-  languages      TutorLanguages[]
-  availabilities Availability[]
-  reviews        Review[]
-  bookings       Booking[]
+  createdAt       DateTime         @default(now())
+  languages       TutorLanguages[]
+  subjects        TutorSubjects[]
+  availabilities  Availability[]
+  bookings        Booking[]
+  reviews         Review[]
+  user            User             @relation(fields: [userId], references: [id])
 
   @@map("tutor_profiles")
 }

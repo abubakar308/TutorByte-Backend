@@ -1,11 +1,15 @@
 import { prisma } from "../../lib/prisma";
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { envVars } from "../../config/env";
 import {
   IChatMessage,
-    IChatResponse,
-    IRecommendedTutor,
+  IChatResponse,
+  IRecommendedTutor,
   ISearchSuggestionResponse,
 } from "./ai.interface";
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(envVars.GEMINI_API_KEY);
 
 const getSearchSuggestions = async (
   query: string
@@ -64,7 +68,6 @@ const getSearchSuggestions = async (
   };
 };
 
-
 const getRecommendedTutors = async (
   userId: string
 ): Promise<IRecommendedTutor[]> => {
@@ -96,41 +99,72 @@ const getRecommendedTutors = async (
   return tutors;
 };
 
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
+/**
+ * FEATURE 1: AI CHAT ASSISTANT
+ */
 const generateChatReply = async (
   messages: IChatMessage[]
 ): Promise<IChatResponse> => {
-  const latestUserMessage =
-    messages.filter((msg) => msg.role === "user").at(-1)?.content || "";
-
-  if (!latestUserMessage) {
-    throw new Error("User message is required");
-  }
-
-  const response = await client.responses.create({
-    model: "gpt-5.4",
-    instructions: `
-You are TutorByte AI Assistant.
-You help users with tutor booking, payments, becoming a tutor, dashboard help, and common FAQs.
-Keep answers concise, helpful, and practical.
-Do not invent unavailable data.
-    `,
-    input: latestUserMessage,
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-flash-latest",
+    systemInstruction: `
+      You are TutorByte AI Assistant.
+      You help users with tutor booking, payments, becoming a tutor, dashboard help, and common FAQs.
+      Keep answers concise, helpful, and practical.
+      Always refer to the platform as TutorByte.
+      If you don't know something, suggest contacting support.
+    `
   });
 
+  const chat = model.startChat({
+    history: messages.slice(0, -1).map(msg => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }],
+    })),
+  });
+
+  const latestMessage = messages[messages.length - 1].content;
+  const result = await chat.sendMessage(latestMessage);
+  const response = await result.response;
+  
   return {
-    reply: response.output_text || "Sorry, I could not generate a response.",
+    reply: response.text(),
   };
 };
 
+/**
+ * FEATURE 2: TUTOR BIO GENERATOR
+ */
+const generateTutorBio = async (payload: {
+  subjects: string[];
+  experienceYears: number;
+  teachingStyle?: string;
+}): Promise<{ bio: string }> => {
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
+
+  const prompt = `
+    Act as a professional tutor copywriter. 
+    Generate a compelling and professional "About Me" bio for a tutor.
+    Subjects taught: ${payload.subjects.join(", ")}.
+    Years of experience: ${payload.experienceYears}.
+    Teaching style: ${payload.teachingStyle || "Professional and engaging"}.
+    
+    The bio should be around 100-150 words, highlight their expertise, and encourage students to book a session.
+    Format the output as plain text.
+  `;
+
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+
+  return {
+    bio: response.text(),
+  };
+};
 
 export const AIService = {
   getSearchSuggestions,
   getRecommendedTutors,
   generateChatReply,
-};
+  generateTutorBio,
+};

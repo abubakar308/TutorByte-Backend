@@ -46,9 +46,28 @@ const deleteSubject = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const uploadIcon = catchAsync(async (req: Request, res: Response) => {
+  if (!req.file) {
+    res.status(httpStatus.BAD_REQUEST).json({
+      success: false,
+      message: "No file uploaded. Field name must be 'icon'.",
+    });
+    return;
+  }
+  const result = await SubjectService.uploadIcon(req.params.id as string, req.file.buffer);
+  sendResponse(res, {
+    httpStatusCode: httpStatus.OK,
+    success: true,
+    message: "Subject icon uploaded successfully",
+    data: result,
+  });
+});
+
 export const SubjectController = {
   createSubject,
   getAllSubjects,
   getSubjectById,
   deleteSubject,
+  uploadIcon,
 };
+

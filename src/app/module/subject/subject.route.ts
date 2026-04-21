@@ -4,6 +4,7 @@ import { checkAuth } from "../../middleware/checkAuth";
 import { validateRequest } from "../../middleware/validateRequest";
 import { SubjectController } from "./subject.controller";
 import { SubjectValidation } from "./subject.validation";
+import { fileUpload } from "../../middleware/fileUpload";
 
 const router = Router();
 
@@ -17,6 +18,13 @@ router.post(
   SubjectController.createSubject
 );
 
+router.post(
+  "/:id/upload-icon",
+  checkAuth(UserRole.ADMIN),
+  fileUpload.single("icon"),
+  SubjectController.uploadIcon
+);
+
 router.delete(
   "/:id",
   checkAuth(UserRole.ADMIN),
@@ -24,3 +32,4 @@ router.delete(
 );
 
 export const SubjectRoutes = router;
+

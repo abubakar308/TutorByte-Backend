@@ -5,7 +5,6 @@ model Notification {
   message   String
   isRead    Boolean
   createdAt DateTime @default(now())
-
   user      User     @relation(fields: [userId], references: [id])
 
   @@map("notifications")

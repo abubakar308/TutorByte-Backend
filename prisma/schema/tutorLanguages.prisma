@@ -2,7 +2,8 @@ model TutorLanguages {
   id         String       @id @default(uuid())
   tutorId    String
   languageId String
-
-  tutor      TutorProfile @relation(fields: [tutorId], references: [id])
   language   Language     @relation(fields: [languageId], references: [id])
+  tutor      TutorProfile @relation(fields: [tutorId], references: [id])
+
+  @@map("tutor_languages")
 }

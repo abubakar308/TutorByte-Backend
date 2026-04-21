@@ -6,16 +6,26 @@ import { checkAuth } from "../../middleware/checkAuth";
 import { validateRequest } from "../../middleware/validateRequest";
 import { UserValidation } from "./student.validation";
 import { UserRole } from "../../../generated/prisma/enums";
+import { fileUpload } from "../../middleware/fileUpload";
 
 
 const router = express.Router();
+
+router.post(
+  "/upload-avatar",
+  checkAuth(UserRole.STUDENT, UserRole.TUTOR, UserRole.ADMIN),
+  fileUpload.single("avatar"),
+  UserController.uploadAvatar
+);
+
 router.get(
   "/student-stats",
+
   checkAuth(UserRole.STUDENT),
   UserController.getStudentStats
 );
 
-// প্রোফাইল আপডেট করার রুট
+
 router.patch(
   "/update-profile",
   checkAuth(UserRole.STUDENT, UserRole.TUTOR, UserRole.ADMIN),

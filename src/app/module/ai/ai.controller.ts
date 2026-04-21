@@ -49,3 +49,13 @@ export const generateChatReply = catchAsync(async (req: Request, res: Response) 
     data,
   });
 });
+
+export const generateBio = catchAsync(async (req: Request, res: Response) => {
+  const data = await AIService.generateTutorBio(req.body);
+  res.status(200).json({
+    success: true,
+    message: "Tutor bio generated successfully",
+    data,
+  });
+});
+

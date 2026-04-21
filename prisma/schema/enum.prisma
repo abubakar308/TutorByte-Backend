@@ -6,8 +6,8 @@ enum UserRole {
 
 enum UserStatus {
   ACTIVE
-  INACTIVE
   BLOCKED
+  INACTIVE
 }
 
 enum SubjectCategory {

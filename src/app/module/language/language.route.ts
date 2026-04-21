@@ -4,6 +4,7 @@ import { checkAuth } from "../../middleware/checkAuth";
 import { validateRequest } from "../../middleware/validateRequest";
 import { LanguageController } from "./language.controller";
 import { LanguageValidation } from "./language.validation";
+import { fileUpload } from "../../middleware/fileUpload";
 
 const router = Router();
 
@@ -15,6 +16,13 @@ router.post(
   checkAuth(UserRole.ADMIN),
   validateRequest(LanguageValidation.createLanguageValidationSchema),
   LanguageController.createLanguage
+);
+
+router.post(
+  "/:id/upload-icon",
+  checkAuth(UserRole.ADMIN),
+  fileUpload.single("icon"),
+  LanguageController.uploadIcon
 );
 
 router.patch(
@@ -31,3 +39,4 @@ router.delete(
 );
 
 export const LanguageRoutes = router;
+

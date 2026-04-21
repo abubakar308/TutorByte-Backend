@@ -9,13 +9,12 @@ model Booking {
   status      BookingStatus @default(PENDING)
   totalPrice  Decimal       @db.Decimal(10, 2)
   meetingLink String?
-  reason      String?
   createdAt   DateTime      @default(now())
-
-  student User         @relation("studentBookings", fields: [studentId], references: [id])
-  tutor   TutorProfile @relation(fields: [tutorId], references: [id])
-  subject Subject     @relation(fields: [subjectId], references: [id])
-  payment Payment?
+  reason      String?
+  student     User          @relation("studentBookings", fields: [studentId], references: [id])
+  subject     Subject       @relation(fields: [subjectId], references: [id])
+  tutor       TutorProfile  @relation(fields: [tutorId], references: [id])
+  payment     Payment?
 
   @@map("bookings")
 }

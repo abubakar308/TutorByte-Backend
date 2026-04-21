@@ -10,6 +10,7 @@ import { prisma } from "../../lib/prisma";
 import { deleteFromCloudinary, getPublicIdFromUrl, uploadToCloudinary } from "../../config/cloudinary.config";
 import { Prisma } from "../../../generated/prisma/client";
 import { QueryHelper } from "../../builder/QueryBuilder";
+import { UserService } from "../student/student.service";
 
 
 
@@ -157,27 +158,10 @@ const updateTutorProfile = async (
 // ─────────────────────────────────────────────────────────────
 
 const uploadAvatar = async (user: IRequestUser, fileBuffer: Buffer, mimetype: string) => {
-  const dbUser = await prisma.user.findUnique({ where: { id: user.userId } });
-  if (!dbUser) throw new AppError(status.NOT_FOUND, "User not found.");
-
-  // Delete old avatar from Cloudinary if it exists
-  if (dbUser.image) {
-    const publicId = getPublicIdFromUrl(dbUser.image);
-    await deleteFromCloudinary(publicId, "image").catch(() => null); // non-blocking
-  }
-
-  const { url } = await uploadToCloudinary(fileBuffer, "tutorbyte/avatars", {
-    transformation: [{ width: 400, height: 400, crop: "fill", gravity: "face" }],
-    format: "webp",
-  });
-
-  await prisma.user.update({
-    where: { id: user.userId },
-    data: { image: url },
-  });
-
-  return { avatarUrl: url };
+  const result = await UserService.uploadAvatar(user, fileBuffer, mimetype);
+  return { avatarUrl: result.image };
 };
+
 
 
 // ─────────────────────────────────────────────────────────────
@@ -195,7 +179,8 @@ const getAllTutors = async (query: Record<string, any>) => {
     ]
   } : {};
 
-  const filterConditions = QueryHelper.filter(query);
+  const { subject, language, ...remainingQuery } = query;
+  const filterConditions = QueryHelper.filter(remainingQuery);
 
   const { skip, take, page, limit, orderBy } = QueryHelper.paginateAndSort(query);
 
@@ -204,6 +189,27 @@ const getAllTutors = async (query: Record<string, any>) => {
     ...searchConditions,
     ...filterConditions,
   };
+
+  // Handle nested relation filters for subject and language
+  if (subject) {
+    where.subjects = {
+      some: {
+        subject: {
+          name: { contains: subject as string, mode: 'insensitive' }
+        }
+      }
+    };
+  }
+
+  if (language) {
+    where.languages = {
+      some: {
+        language: {
+          name: { contains: language as string, mode: 'insensitive' }
+        }
+      }
+    };
+  }
 
 const total = await prisma.tutorProfile.count({ where });
 

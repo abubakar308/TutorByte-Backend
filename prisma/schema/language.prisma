@@ -1,6 +1,8 @@
 model Language {
-  id     String          @id @default(uuid())
-  name   String       @unique
-
+  id     String           @id @default(uuid())
+  name   String           @unique
+  image  String?
   tutors TutorLanguages[]
+
+  @@map("languages")
 }

@@ -40,12 +40,19 @@ export const deleteFromCloudinary = async (
  * "https://res.cloudinary.com/.../tutorbyte/avatars/abc123.jpg"
  * → "tutorbyte/avatars/abc123"
  */
-export const getPublicIdFromUrl = (url: string): string => {
-  const parts = url.split("/");
-  const uploadIndex = parts.indexOf("upload");
-  const startIndex =
-    uploadIndex + 1 + (parts[uploadIndex + 1]?.startsWith("v") ? 1 : 0);
-  return parts.slice(startIndex).join("/").replace(/\.[^/.]+$/, "");
+export const getPublicIdFromUrl = (url: string): string | null => {
+  try {
+    const parts = url.split("/");
+    const uploadIndex = parts.indexOf("upload");
+    if (uploadIndex === -1) return null; // Not a standard Cloudinary URL
+    
+    const startIndex =
+      uploadIndex + 1 + (parts[uploadIndex + 1]?.startsWith("v") ? 1 : 0);
+    return parts.slice(startIndex).join("/").replace(/\.[^/.]+$/, "");
+  } catch (error) {
+    return null;
+  }
 };
+
 
 export { cloudinary };

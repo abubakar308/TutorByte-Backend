@@ -5,6 +5,7 @@ import { TutorValidation } from "./tutor.validation";
 
 import { UserRole } from "../../../generated/prisma/enums";
 import { validateRequest } from "../../middleware/validateRequest";
+import { fileUpload } from "../../middleware/fileUpload";
 
 const router = Router();
 
@@ -68,6 +69,7 @@ router.get(
 
 // ── Uploads ────────────────────────────────────────────────────
 
+
 /**
  * POST /tutors/upload/avatar
  * multipart/form-data  field: "avatar"  (image, max 5MB)
@@ -75,9 +77,10 @@ router.get(
 router.post(
   "/upload/avatar",
   checkAuth(UserRole.TUTOR, UserRole.STUDENT),  // both roles can upload avatars
-
+  fileUpload.single("avatar"),
   TutorController.uploadAvatar
 );
+
 
 
 

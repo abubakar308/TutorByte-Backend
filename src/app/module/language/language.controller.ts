@@ -57,10 +57,29 @@ const deleteLanguage = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const uploadIcon = catchAsync(async (req: Request, res: Response) => {
+  if (!req.file) {
+    res.status(httpStatus.BAD_REQUEST).json({
+      success: false,
+      message: "No file uploaded. Field name must be 'icon'.",
+    });
+    return;
+  }
+  const result = await LanguageService.uploadIcon(req.params.id, req.file.buffer);
+  sendResponse(res, {
+    httpStatusCode: httpStatus.OK,
+    success: true,
+    message: "Language icon uploaded successfully",
+    data: result,
+  });
+});
+
 export const LanguageController = {
   createLanguage,
   getAllLanguages,
   getLanguageById,
   updateLanguage,
   deleteLanguage,
+  uploadIcon,
 };
+
