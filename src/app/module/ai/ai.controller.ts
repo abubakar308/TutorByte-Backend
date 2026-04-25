@@ -42,6 +42,8 @@ export const getRecommendations = catchAsync(async (req: Request, res: Response)
 
 export const generateChatReply = catchAsync(async (req: Request, res: Response) => {
   const { messages } = req.body;
+
+  console.log(messages)
   const data = await AIService.generateChatReply(messages);
   res.status(200).json({
     success: true,
