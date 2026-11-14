@@ -69,7 +69,7 @@ const createTutorProfile = async (
           }
         }))
       },
-      experienceYears: payload.experienceYrs ?? 0,
+      experienceYears: payload.experienceYears ?? 0,
       averageRating: 0,
       totalReviews: 0,
       isApproved: false,

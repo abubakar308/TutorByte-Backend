@@ -1,7 +1,7 @@
 import { Prisma } from "../../generated/prisma/client";
 
 export class QueryHelper {
-  // ১. Search Logic: একটি সার্চ টার্ম এবং সার্চেবল ফিল্ডের অ্যারে নেবে এবং Prisma এর জন্য একটি সার্চ অবজেক্ট রিটার্ন করবে
+  // ১. Search Logic
   static search(searchTerm: string | undefined, searchableFields: string[]) {
     if (!searchTerm) return {};
 
@@ -15,11 +15,11 @@ export class QueryHelper {
     };
   }
 
-  // ২. Filter Logic: স্ট্যাটাস, ক্যাটাগরি বা অন্য ফিক্সড ভ্যালুর জন্য
+  // ২. Filter Logic
   static filter(query: Record<string, any>, excludeFields: string[] = ["search", "searchTerm", "page", "limit", "sortBy", "sortOrder"]) {
     const finalFilters: Record<string, any> = {};
     
-    // query থেকে সার্চ এবং প্যাগিনেশন বাদ দিয়ে বাকি সব ফিল্টার হিসেবে নিবে
+  
     Object.keys(query).forEach((key) => {
       if (!excludeFields.includes(key) && query[key]) {
         finalFilters[key] = query[key];

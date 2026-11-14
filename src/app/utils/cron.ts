@@ -5,7 +5,7 @@ import { BookingStatus } from "../../generated/prisma/enums";
 export const startCronJobs = () => {
   // Run every 10 minutes to check for completed bookings
   cron.schedule("*/10 * * * *", async () => {
-    console.log("🕒 [Cron] Checking for completed bookings...");
+   
     try {
       // Find all bookings that are currently ACCEPTED (meaning they are paid and scheduled)
       const activeBookings = await prisma.booking.findMany({

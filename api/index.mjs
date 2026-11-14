@@ -3469,7 +3469,7 @@ var UserRoutes = router9;
 import express3 from "express";
 
 // src/app/module/ai/ai.service.ts
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 var genAI = new GoogleGenerativeAI(envVars.GEMINI_API_KEY);
 var getSearchSuggestions = async (query) => {
   const search = query.trim().toLowerCase();
@@ -3546,16 +3546,83 @@ var getRecommendedTutors = async (userId) => {
   });
   return tutors;
 };
+var dbTools = {
+  searchTutors: async ({ query }) => {
+    const tutors = await prisma.tutorProfile.findMany({
+      where: {
+        isApproved: true,
+        OR: [
+          { bio: { contains: query, mode: "insensitive" } },
+          { user: { name: { contains: query, mode: "insensitive" } } },
+          { subjects: { some: { subject: { name: { contains: query, mode: "insensitive" } } } } }
+        ]
+      },
+      take: 5,
+      include: {
+        user: { select: { name: true } },
+        subjects: { include: { subject: true } }
+      },
+      orderBy: { averageRating: "desc" }
+    });
+    return tutors.map((t) => ({
+      name: t.user.name,
+      subjects: t.subjects.map((s) => s.subject.name),
+      rating: t.averageRating,
+      rate: `$${t.hourlyRate}`,
+      bio: t.bio?.substring(0, 100) + "..."
+    }));
+  },
+  getAvailableSubjects: async () => {
+    return await prisma.subject.findMany({
+      select: { name: true, category: true }
+    });
+  },
+  getPlatformStats: async () => {
+    const [tutors, subjects, students, bookings] = await Promise.all([
+      prisma.tutorProfile.count({ where: { isApproved: true } }),
+      prisma.subject.count(),
+      prisma.user.count({ where: { role: "STUDENT" } }),
+      prisma.booking.count()
+    ]);
+    return {
+      totalTutors: tutors,
+      totalSubjects: subjects,
+      activeStudents: students,
+      completedBookings: bookings
+    };
+  }
+};
 var generateChatReply = async (messages) => {
   const model = genAI.getGenerativeModel({
     model: "gemini-flash-latest",
-    systemInstruction: `
-      You are TutorByte AI Assistant.
-      You help users with tutor booking, payments, becoming a tutor, dashboard help, and common FAQs.
-      Keep answers concise, helpful, and practical.
-      Always refer to the platform as TutorByte.
-      If you don't know something, suggest contacting support.
-    `
+    tools: [
+      {
+        functionDeclarations: [
+          {
+            name: "searchTutors",
+            description: "Search for tutors based on a name, subject, or specialty query.",
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                query: {
+                  type: SchemaType.STRING,
+                  description: "The search term (e.g., 'Math', 'John', 'Piano')"
+                }
+              },
+              required: ["query"]
+            }
+          },
+          {
+            name: "getAvailableSubjects",
+            description: "Retrieve a list of all subjects and categories available on TutorByte."
+          },
+          {
+            name: "getPlatformStats",
+            description: "Get real-time platform statistics like total tutors, students, and bookings."
+          }
+        ]
+      }
+    ]
   });
   const chat = model.startChat({
     history: messages.slice(0, -1).map((msg) => ({
@@ -3564,8 +3631,25 @@ var generateChatReply = async (messages) => {
     }))
   });
   const latestMessage = messages[messages.length - 1].content;
-  const result = await chat.sendMessage(latestMessage);
-  const response = await result.response;
+  let result = await chat.sendMessage(latestMessage);
+  let response = result.response;
+  const calls = response.candidates?.[0]?.content?.parts?.filter((p) => p.functionCall);
+  if (calls && calls.length > 0) {
+    const toolResponses = await Promise.all(calls.map(async (call) => {
+      const functionName = call.functionCall.name;
+      const args = call.functionCall.args;
+      console.log(`AI calling tool: ${functionName}`, args);
+      const data = await dbTools[functionName](args);
+      return {
+        functionResponse: {
+          name: functionName,
+          response: { content: data }
+        }
+      };
+    }));
+    const finalResult = await chat.sendMessage(toolResponses);
+    response = finalResult.response;
+  }
   return {
     reply: response.text()
   };
@@ -3628,6 +3712,7 @@ var getRecommendations = catchAsync(async (req, res) => {
 });
 var generateChatReply2 = catchAsync(async (req, res) => {
   const { messages } = req.body;
+  console.log(messages);
   const data = await AIService.generateChatReply(messages);
   res.status(200).json({
     success: true,
